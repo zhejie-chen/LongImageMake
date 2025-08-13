@@ -1,260 +1,260 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LongImageMake</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image-more/2.9.5/dom-to-image-more.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-            background-color: #e5e7eb;
-            overflow: hidden;
-        }
-        .main-container { display: grid; grid-template-columns: 55% 45%; height: 100vh; }
-        #editor-pane { background-color: #f9fafb; display: flex; flex-direction: column; height: 100vh; overflow-x: hidden; }
-        #editor-cards-container { overflow-y: auto; flex-grow: 1; padding: 20px; max-width: 700px; width: 100%; margin: 0 auto; }
-        #editor-cards-container::-webkit-scrollbar, .scroll-wrapper::-webkit-scrollbar { width: 8px; }
-        #editor-cards-container::-webkit-scrollbar-track, .scroll-wrapper::-webkit-scrollbar-track { background: transparent; }
-        #editor-cards-container::-webkit-scrollbar-thumb, .scroll-wrapper::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; }
-        #editor-cards-container::-webkit-scrollbar-thumb { border: 2px solid #f9fafb; }
-        .scroll-wrapper::-webkit-scrollbar-thumb { border: 2px solid #e5e7eb; }
-        #editor-cards-container::-webkit-scrollbar-thumb:hover, .scroll-wrapper::-webkit-scrollbar-thumb:hover { background-color: #9ca3af; }
-        #editor-cards-container, .scroll-wrapper { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
-        #preview-pane { background-color: #e5e7eb; overflow-y: hidden; position: relative; }
-        .scroll-wrapper { height: 100%; overflow-y: auto; padding: 2rem; cursor: default; }
-        #preview-canvas { background-color: #f0f2f5; width: 570px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 1.5rem; align-content: flex-start; padding: 1.5rem; cursor: default; }
-        .custom-select-container { position: relative; }
-        .custom-select-trigger { background-color: #f3f4f6; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .custom-select-options { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-radius: 0.5rem; z-index: 20; margin-top: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-height: 200px; overflow-y: auto; }
-        .custom-select-options.show { display: block; }
-        .custom-select-option { padding: 0.75rem 1rem; cursor: pointer; }
-        .custom-select-option:hover { background-color: #3b82f6; color: white; }
-        .custom-file-button { background-color: #f3f4f6; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem 1.25rem; cursor: pointer; font-weight: 500; text-align: center; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .custom-file-button:hover { background-color: #e5e7eb; }
-        .editor-card, .global-settings-card { background: white; border-radius: 1rem; padding: 20px; margin-bottom: 1.5rem; border: 1px solid #e5e7eb; }
-        .title-input-editor { font-size: 1.25rem; font-weight: 700; padding: 0.75rem; width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; line-height: 1.6; }
-        .editor-card .content-editor { width: 100%; min-height: 80px; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem; outline: none; line-height: 1.6; }
-        .content-editor[data-placeholder]:not(:focus):empty::before { content: attr(data-placeholder); color: #9ca3af; }
-        .editor-card .centered-editor { text-align: center; } .editor-card .bold-editor { font-weight: 600; }
-        .preview-block, .divider-text-preview { transition: all 0.3s ease-in-out; position: relative; box-sizing: border-box; cursor: grab; }
-        .preview-highlight { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.7) !important; }
-        .preview-block { background-color: #ffffff; border-radius: 1.5rem; padding: 20px; }
-        .preview-block.large, .divider-text-preview { flex-basis: 100%; }
-        .preview-block.small { flex-basis: calc(50% - 0.75rem); padding: 20px; font-size: 0.9rem; }
-        .preview-block .preview-title { font-size: 1.75rem; font-weight: 700; color: #111827; line-height: 1.2; margin: 0; }
-        .preview-block.small .preview-title { font-size: 1.25rem; }
-        .preview-block .preview-content { font-size: 1rem; line-height: 1.7; color: #374151; word-wrap: break-word; margin-top: 0.75rem; }
-        .preview-block .preview-image-container { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
-        .preview-block .preview-image-container .img-wrapper { flex: 1; min-width: 30%; border-radius: 1rem; overflow: hidden; aspect-ratio: 4 / 3; }
-        .preview-image-container.layout-2x2 .img-wrapper { flex-basis: calc(50% - 0.5rem); min-width: auto; }
-        .preview-block .preview-image-container img { width: 100%; height: 100%; object-fit: cover; }
-        .title-wrapper-preview { display: flex; align-items: center; gap: 0.75rem; }
-        .title-bar-preview { width: 5px; background-color: #3b82f6; border-radius: 2.5px; align-self: stretch; }
-        .divider-text-preview { font-size: 2.5rem; font-weight: 700; padding: 0 20px; color: #d1d5db; text-align: center; }
-        .divider-text-preview.align-left { text-align: left; } .divider-text-preview.align-right { text-align: right; } .divider-text-preview.color-black { color: #1f2937; }
-        .pure-text-preview-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 600; font-size: 1.5rem; }
-        .controls-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; background-color: #f9fafb; font-size: 1.25rem; font-weight: 600; color: #111827; }
-        #report-title-input { font-size: 1.125rem; font-weight: 500; color: #111827; background-color: white; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; width: 100%; padding: 0.5rem 0.75rem; }
-        .floating-controls { position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 1rem; z-index: 100; }
-        .control-btn { background-color: #3b82f6; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 9999px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 0.5rem; }
-        .control-btn:hover { background-color: #2563eb; }
-        .add-block-dropdown { position: relative; display: inline-block; }
-        .add-block-dropdown-content { display: none; position: absolute; background-color: white; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 10; border-radius: 0.75rem; bottom: calc(100% + 0.5rem); left: 50%; transform: translateX(-50%); overflow: hidden; padding: 0.5rem; }
-        .add-block-dropdown-content.show { display: block; }
-        .add-block-dropdown-content button { color: #374151; padding: 0.75rem 1rem; text-decoration: none; display: flex; align-items: center; width: 100%; text-align: left; background: none; border: none; cursor: pointer; border-radius: 0.5rem; font-weight: 500; transition: background-color 0.2s ease, color 0.2s ease; }
-        .add-block-dropdown-content button:hover { background-color: #eff6ff; color: #2563eb; }
-        .add-block-dropdown-content i { width: 2rem; }
-        .toolbar { background-color: #f3f4f6; border: 1px solid #d1d5db; border-bottom: none; border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; padding: 5px; display: flex; flex-wrap: wrap; gap: 4px; }
-        .toolbar button, .style-btn { background: white; border: 1px solid #d1d5db; color: #4b5568; padding: 6px 8px; cursor: pointer; font-size: 14px; border-radius: 4px; }
-        .toolbar button:hover, .style-btn:hover { background-color: #e5e7eb; }
-        .style-btn.active { background-color: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
-        .preview-delete-btn { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; background-color: rgba(239, 68, 68, 0.8); color: white; border-radius: 99px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: all 0.2s ease; z-index: 6; font-size: 14px; }
-        .preview-delete-btn:hover { background-color: rgba(220, 38, 38, 1); }
-        [draggable="true"]:hover .preview-delete-btn { opacity: 1; }
-        .dragging { opacity: 0.5; border: 2px dashed #3b82f6; background-color: #eff6ff; }
-        #undo-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background-color: #2c3e50; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 1rem; z-index: 9999; transition: bottom 0.5s ease-in-out; cursor: pointer; }
-        #undo-toast.show { bottom: 2rem; }
-        #undo-toast button { background: none; border: none; color: #3b82f6; font-weight: bold; cursor: pointer; }
-        .import-btn { background-color: #4f46e5; } .import-btn:hover { background-color: #4338ca; }
-        .export-image-btn { background-color: #16a34a; } .export-image-btn:hover { background-color: #15803d; }
-        .color-swatch { width: 24px; height: 24px; border-radius: 99px; cursor: pointer; border: 2px solid transparent; }
-        .color-swatch.active { border-color: #3b82f6; transform: scale(1.1); }
-        .hidden { display: none; }
-        .sub-blocks-list { display: flex; flex-wrap: wrap; gap: 10px; }
-        .sub-block-editor { border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 10px; background: white; }
-        .sub-block-editor.type-content { flex-basis: 100%; padding: 10px; }
-        .sub-block-editor.type-image { flex: 1; min-width: 30%; aspect-ratio: 4 / 3; padding: 10px; display: flex; flex-direction: column; }
-        .sub-blocks-list.editor-layout-2x2 .sub-block-editor.type-image { flex-basis: calc(50% - 5px); min-width: auto; }
-        .sub-block-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-        .sub-block-title { font-weight: 500; color: #6b7280; font-size: 0.8rem; }
-        .sub-block-controls { display: flex; align-items: center; gap: 8px; }
-        .sub-block-drag-handle { cursor: grab; color: #9ca3af; }
-        .sub-block-delete-btn { cursor: pointer; color: #ef4444; font-size: 0.9rem; }
-        .editor-image-preview { position: relative; flex-grow: 1; cursor: pointer; }
-        .editor-image-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
-        .editor-image-delete-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .preview-cover-image-container {
-            width: calc(100% + 3rem); margin-left: -1.5rem; margin-right: -1.5rem; margin-top: -1.5rem;
-            aspect-ratio: 1068 / 455; overflow: hidden; background-color: #f0f2f5;
-        }
-        .preview-cover-image-container img { width: 100%; height: 100%; object-fit: cover; }
-        .cover-image-editor-preview {
-            position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 0.5rem; overflow: hidden;
-            cursor: pointer; background-color: #f3f4f6; display: flex; align-items: center; justify-content: center;
-        }
-        .cover-image-editor-preview img { width: 100%; height: 100%; object-fit: contain; }
-        .final-attribution-block {
-            flex-basis: 100%;
-            font-size: 0.75rem; /* 12px */
-            color: #6b7280; /* gray-500 */
-            margin-top: 1rem;
-            padding: 0 0.5rem;
-        }
-        .final-attribution-block p {
-            margin: 0 0 0.25rem;
-            line-height: 1.5;
-        }
-        .final-attribution-source {
-            font-weight: 500;
-        }
-        .attribution-editor .content-editor {
-            min-height: auto;
-            font-size: 0.875rem;
-            line-height: 1.5;
-            padding: 0.5rem;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LongImageMake</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image-more/2.9.5/dom-to-image-more.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+      background-color: #e5e7eb;
+      overflow: hidden;
+    }
+    .main-container { display: grid; grid-template-columns: 55% 45%; height: 100vh; }
+    #editor-pane { background-color: #f9fafb; display: flex; flex-direction: column; height: 100vh; overflow-x: hidden; }
+    #editor-cards-container { overflow-y: auto; flex-grow: 1; padding: 20px; max-width: 700px; width: 100%; margin: 0 auto; }
+    #editor-cards-container::-webkit-scrollbar, .scroll-wrapper::-webkit-scrollbar { width: 8px; }
+    #editor-cards-container::-webkit-scrollbar-track, .scroll-wrapper::-webkit-scrollbar-track { background: transparent; }
+    #editor-cards-container::-webkit-scrollbar-thumb, .scroll-wrapper::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; }
+    #editor-cards-container::-webkit-scrollbar-thumb { border: 2px solid #f9fafb; }
+    .scroll-wrapper::-webkit-scrollbar-thumb { border: 2px solid #e5e7eb; }
+    #editor-cards-container::-webkit-scrollbar-thumb:hover, .scroll-wrapper::-webkit-scrollbar-thumb:hover { background-color: #9ca3af; }
+    #editor-cards-container, .scroll-wrapper { scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
+    #preview-pane { background-color: #e5e7eb; overflow-y: hidden; position: relative; }
+    .scroll-wrapper { height: 100%; overflow-y: auto; padding: 2rem; cursor: default; }
+    #preview-canvas { background-color: #f0f2f5; width: 570px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 1.5rem; align-content: flex-start; padding: 1.5rem; cursor: default; }
+    .custom-select-container { position: relative; }
+    .custom-select-trigger { background-color: #f3f4f6; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .custom-select-options { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-radius: 0.5rem; z-index: 20; margin-top: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-height: 200px; overflow-y: auto; }
+    .custom-select-options.show { display: block; }
+    .custom-select-option { padding: 0.75rem 1rem; cursor: pointer; }
+    .custom-select-option:hover { background-color: #3b82f6; color: white; }
+    .custom-file-button { background-color: #f3f4f6; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem 1.25rem; cursor: pointer; font-weight: 500; text-align: center; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .custom-file-button:hover { background-color: #e5e7eb; }
+    .editor-card, .global-settings-card { background: white; border-radius: 1rem; padding: 20px; margin-bottom: 1.5rem; border: 1px solid #e5e7eb; }
+    .title-input-editor { font-size: 1.25rem; font-weight: 700; padding: 0.75rem; width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; line-height: 1.6; }
+    .editor-card .content-editor { width: 100%; min-height: 80px; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem; outline: none; line-height: 1.6; }
+    .content-editor[data-placeholder]:not(:focus):empty::before { content: attr(data-placeholder); color: #9ca3af; }
+    .editor-card .centered-editor { text-align: center; } .editor-card .bold-editor { font-weight: 600; }
+    .preview-block, .divider-text-preview { transition: all 0.3s ease-in-out; position: relative; box-sizing: border-box; cursor: grab; }
+    .preview-highlight { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.7) !important; }
+    .preview-block { background-color: #ffffff; border-radius: 1.5rem; padding: 20px; }
+    .preview-block.large, .divider-text-preview { flex-basis: 100%; }
+    .preview-block.small { flex-basis: calc(50% - 0.75rem); padding: 20px; font-size: 0.9rem; }
+    .preview-block .preview-title { font-size: 1.75rem; font-weight: 700; color: #111827; line-height: 1.2; margin: 0; }
+    .preview-block.small .preview-title { font-size: 1.25rem; }
+    .preview-block .preview-content { font-size: 1rem; line-height: 1.7; color: #374151; word-wrap: break-word; margin-top: 0.75rem; }
+    .preview-block .preview-image-container { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
+    .preview-block .preview-image-container .img-wrapper { flex: 1; min-width: 30%; border-radius: 1rem; overflow: hidden; aspect-ratio: 4 / 3; }
+    .preview-image-container.layout-2x2 .img-wrapper { flex-basis: calc(50% - 0.5rem); min-width: auto; }
+    .preview-block .preview-image-container img { width: 100%; height: 100%; object-fit: cover; }
+    .title-wrapper-preview { display: flex; align-items: center; gap: 0.75rem; }
+    .title-bar-preview { width: 5px; background-color: #3b82f6; border-radius: 2.5px; align-self: stretch; }
+    .divider-text-preview { font-size: 2.5rem; font-weight: 700; padding: 0 20px; color: #d1d5db; text-align: center; }
+    .divider-text-preview.align-left { text-align: left; } .divider-text-preview.align-right { text-align: right; } .divider-text-preview.color-black { color: #1f2937; }
+    .pure-text-preview-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 600; font-size: 1.5rem; }
+    .controls-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; background-color: #f9fafb; font-size: 1.25rem; font-weight: 600; color: #111827; }
+    #report-title-input { font-size: 1.125rem; font-weight: 500; color: #111827; background-color: white; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; width: 100%; padding: 0.5rem 0.75rem; }
+    .floating-controls { position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 1rem; z-index: 100; }
+    .control-btn { background-color: #3b82f6; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 9999px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 0.5rem; }
+    .control-btn:hover { background-color: #2563eb; }
+    .add-block-dropdown { position: relative; display: inline-block; }
+    .add-block-dropdown-content { display: none; position: absolute; background-color: white; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 10; border-radius: 0.75rem; bottom: calc(100% + 0.5rem); left: 50%; transform: translateX(-50%); overflow: hidden; padding: 0.5rem; }
+    .add-block-dropdown-content.show { display: block; }
+    .add-block-dropdown-content button { color: #374151; padding: 0.75rem 1rem; text-decoration: none; display: flex; align-items: center; width: 100%; text-align: left; background: none; border: none; cursor: pointer; border-radius: 0.5rem; font-weight: 500; transition: background-color 0.2s ease, color 0.2s ease; }
+    .add-block-dropdown-content button:hover { background-color: #eff6ff; color: #2563eb; }
+    .add-block-dropdown-content i { width: 2rem; }
+    .toolbar { background-color: #f3f4f6; border: 1px solid #d1d5db; border-bottom: none; border-top-left-radius: 0.5rem; border-top-right-radius: 0.5rem; padding: 5px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .toolbar button, .style-btn { background: white; border: 1px solid #d1d5db; color: #4b5568; padding: 6px 8px; cursor: pointer; font-size: 14px; border-radius: 4px; }
+    .toolbar button:hover, .style-btn:hover { background-color: #e5e7eb; }
+    .style-btn.active { background-color: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+    .preview-delete-btn { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; background-color: rgba(239, 68, 68, 0.8); color: white; border-radius: 99px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: all 0.2s ease; z-index: 6; font-size: 14px; }
+    .preview-delete-btn:hover { background-color: rgba(220, 38, 38, 1); }
+    [draggable="true"]:hover .preview-delete-btn { opacity: 1; }
+    .dragging { opacity: 0.5; border: 2px dashed #3b82f6; background-color: #eff6ff; }
+    #undo-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background-color: #2c3e50; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 1rem; z-index: 9999; transition: bottom 0.5s ease-in-out; cursor: pointer; }
+    #undo-toast.show { bottom: 2rem; }
+    #undo-toast button { background: none; border: none; color: #3b82f6; font-weight: bold; cursor: pointer; }
+    .import-btn { background-color: #4f46e5; } .import-btn:hover { background-color: #4338ca; }
+    .export-image-btn { background-color: #16a34a; } .export-image-btn:hover { background-color: #15803d; }
+    .color-swatch { width: 24px; height: 24px; border-radius: 99px; cursor: pointer; border: 2px solid transparent; }
+    .color-swatch.active { border-color: #3b82f6; transform: scale(1.1); }
+    .hidden { display: none; }
+    .sub-blocks-list { display: flex; flex-wrap: wrap; gap: 10px; }
+    .sub-block-editor { border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 10px; background: white; }
+    .sub-block-editor.type-content { flex-basis: 100%; padding: 10px; }
+    .sub-block-editor.type-image { flex: 1; min-width: 30%; aspect-ratio: 4 / 3; padding: 10px; display: flex; flex-direction: column; }
+    .sub-blocks-list.editor-layout-2x2 .sub-block-editor.type-image { flex-basis: calc(50% - 5px); min-width: auto; }
+    .sub-block-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .sub-block-title { font-weight: 500; color: #6b7280; font-size: 0.8rem; }
+    .sub-block-controls { display: flex; align-items: center; gap: 8px; }
+    .sub-block-drag-handle { cursor: grab; color: #9ca3af; }
+    .sub-block-delete-btn { cursor: pointer; color: #ef4444; font-size: 0.9rem; }
+    .editor-image-preview { position: relative; flex-grow: 1; cursor: pointer; }
+    .editor-image-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
+    .editor-image-delete-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .preview-cover-image-container {
+      width: calc(100% + 3rem); margin-left: -1.5rem; margin-right: -1.5rem; margin-top: -1.5rem;
+      aspect-ratio: 1068 / 455; overflow: hidden; background-color: #f0f2f5;
+    }
+    .preview-cover-image-container img { width: 100%; height: 100%; object-fit: cover; }
+    .cover-image-editor-preview {
+      position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 0.5rem; overflow: hidden;
+      cursor: pointer; background-color: #f3f4f6; display: flex; align-items: center; justify-content: center;
+    }
+    .cover-image-editor-preview img { width: 100%; height: 100%; object-fit: contain; }
+    .final-attribution-block {
+      flex-basis: 100%;
+      font-size: 0.75rem; /* 12px */
+      color: #6b7280; /* gray-500 */
+      margin-top: 1rem;
+      padding: 0 0.5rem;
+    }
+    .final-attribution-block p {
+      margin: 0 0 0.25rem;
+      line-height: 1.5;
+    }
+    .final-attribution-source {
+      font-weight: 500;
+    }
+    .attribution-editor .content-editor {
+      min-height: auto;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      padding: 0.5rem;
+    }
+  </style>
 </head>
 <body>
 
 <div class="main-container">
-    <div id="preview-pane">
-        <div class="scroll-wrapper">
-            <div id="preview-canvas"></div>
-        </div>
-        <div class="floating-controls">
-            <div class="add-block-dropdown" onmouseenter="showAddDropdown()" onmouseleave="hideAddDropdown()">
-                <button class="control-btn" id="add-card-btn"><i class="fas fa-plus"></i> 新增卡片</button>
-                <div class="add-block-dropdown-content" onmouseenter="cancelHideAddDropdown()" onmouseleave="hideAddDropdown()">
-                    <button onclick="addBlock('divider')"><i class="fas fa-heading"></i>大标题</button>
-                    <button onclick="addBlock('mediumtext')"><i class="fas fa-heading" style="font-size: 0.8em;"></i>中标题</button>
-                    <button onclick="addBlock('puretext')"><i class="fas fa-text-height"></i>小标题</button>
-                    <button onclick="addBlock('large')"><i class="fas fa-image"></i>大卡片</button>
-                    <button onclick="addBlock('small')"><i class="fas fa-grip-lines"></i>小卡片</button>
-                </div>
-            </div>
-        </div>
+  <div id="preview-pane">
+    <div class="scroll-wrapper">
+      <div id="preview-canvas"></div>
     </div>
-    <div id="editor-pane">
-        <div class="controls-header">
-            <span id="editor-header-title">全局设置</span>
+    <div class="floating-controls">
+      <div class="add-block-dropdown" onmouseenter="showAddDropdown()" onmouseleave="hideAddDropdown()">
+        <button class="control-btn" id="add-card-btn"><i class="fas fa-plus"></i> 新增卡片</button>
+        <div class="add-block-dropdown-content" onmouseenter="cancelHideAddDropdown()" onmouseleave="hideAddDropdown()">
+          <button onclick="addBlock('divider')"><i class="fas fa-heading"></i>大标题</button>
+          <button onclick="addBlock('mediumtext')"><i class="fas fa-heading" style="font-size: 0.8em;"></i>中标题</button>
+          <button onclick="addBlock('puretext')"><i class="fas fa-text-height"></i>小标题</button>
+          <button onclick="addBlock('large')"><i class="fas fa-image"></i>大卡片</button>
+          <button onclick="addBlock('small')"><i class="fas fa-grip-lines"></i>小卡片</button>
         </div>
-        <div id="editor-cards-container"></div>
+      </div>
     </div>
+  </div>
+  <div id="editor-pane">
+    <div class="controls-header">
+      <span id="editor-header-title">全局设置</span>
+    </div>
+    <div id="editor-cards-container"></div>
+  </div>
 </div>
 
 <div id="undo-toast">
-    <span>已删除一个卡片。</span>
-    <button onclick="undoDelete(event)">撤销</button>
+  <span>已删除一个卡片。</span>
+  <button onclick="undoDelete(event)">撤销</button>
 </div>
 <input type="file" id="import-file-input" accept=".json" style="display: none;">
 <input type="file" id="cover-image-input" accept="image/*" style="display: none;" onchange="updateCoverImage(event)">
 
 <script>
-    // --- DATA MODEL ---
-    let reportTitle = "汽车发布会分析报告";
-    let coverImageUrl = null;
-    let coverImageMarginBottom = 24;
-    let blocks = [];
-    let selectedBlockId = null;
-    // --- Global Settings Variables ---
-    let cardShadowIntensity = 100;
-    let showFinalAttribution = false;
-    let finalCaption = '';
-    let finalSource = '长安科技/用户与市场/用户洞察与前瞻';
-    let finalTextAlign = 'center';
+  // --- DATA MODEL ---
+  let reportTitle = "汽车发布会分析报告";
+  let coverImageUrl = null;
+  let coverImageMarginBottom = 24;
+  let blocks = [];
+  let selectedBlockId = null;
+  // --- Global Settings Variables ---
+  let cardShadowIntensity = 100;
+  let showFinalAttribution = false;
+  let finalCaption = '';
+  let finalSource = '长安科技/用户与市场/用户洞察与前瞻';
+  let finalTextAlign = 'center';
 
-    const titleBarColors = { blue: '#3b82f6', purple: '#8b5cf6', orange: '#f97316' };
-    const titleTextColors = { black: '#1f2937', yellow: '#f59e0b', blue: '#3b82f6', green: '#22c55e', purple: '#a855f7' };
-    const highlightColors = { yellow: '#fde047', blue: '#bfdbfe', green: '#bbf7d0', purple: '#e9d5ff' };
-    const cardBackgroundColors = { blue: '#eff6ff', purple: '#f5f3ff', orange: '#fff7ed', default: '#ffffff' };
-    const fontSizes = { small: '1.5rem', medium: '2.0rem', large: '2.25rem' };
-    let lastDeletedBlock = null;
+  const titleBarColors = { blue: '#3b82f6', purple: '#8b5cf6', orange: '#f97316' };
+  const titleTextColors = { black: '#1f2937', yellow: '#f59e0b', blue: '#3b82f6', green: '#22c55e', purple: '#a855f7' };
+  const highlightColors = { yellow: '#fde047', blue: '#bfdbfe', green: '#bbf7d0', purple: '#e9d5ff' };
+  const cardBackgroundColors = { blue: '#eff6ff', purple: '#f5f3ff', orange: '#fff7ed', default: '#ffffff' };
+  const fontSizes = { small: '1.5rem', medium: '2.0rem', large: '2.25rem' };
+  let lastDeletedBlock = null;
 
-    const PLACEHOLDER_INITIAL = '在这里输入内容...';
-    const PLACEHOLDER_NEW_SUB = '新增内容...';
+  const PLACEHOLDER_INITIAL = '在这里输入内容...';
+  const PLACEHOLDER_NEW_SUB = '新增内容...';
 
-    const blockTypeNames = { large: '大卡片', small: '小卡片', divider: '大标题', puretext: '小标题', mediumtext: '中标题' };
-    const compatibleTypesMatrix = {
-        'title-blocks': ['large', 'small'],
-        'no-title-blocks': ['divider', 'mediumtext', 'puretext']
-    };
+  const blockTypeNames = { large: '大卡片', small: '小卡片', divider: '大标题', puretext: '小标题', mediumtext: '中标题' };
+  const compatibleTypesMatrix = {
+    'title-blocks': ['large', 'small'],
+    'no-title-blocks': ['divider', 'mediumtext', 'puretext']
+  };
 
-    function migrateToSubBlockModel(oldBlocks) {
-        return oldBlocks.map(block => {
-            if ((block.type === 'large' || block.type === 'small') && !block.subBlocks) {
-                const subBlocks = [];
-                if (block.title != null) subBlocks.push({ id: Date.now() + Math.random(), type: 'title', content: block.title });
-                if (block.content != null) subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: block.content });
-                if (block.type === 'large') {
-                    if (block.imageUrl1) subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: block.imageUrl1 });
-                    if (block.imageUrl2) subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: block.imageUrl2 });
-                }
-                block.subBlocks = subBlocks;
-                delete block.title;
-                delete block.content;
-                delete block.imageUrl1;
-                delete block.imageUrl2;
-            }
-            if((block.type === 'large' || block.type === 'small' || block.type === 'puretext' || block.type === 'mediumtext') && !block.backgroundColor) {
-                block.backgroundColor = 'default';
-            }
-            if((block.type === 'puretext' || block.type === 'mediumtext') && !block.fontSize) {
-                block.fontSize = 'small';
-            }
-            return block;
-        });
-    }
+  function migrateToSubBlockModel(oldBlocks) {
+    return oldBlocks.map(block => {
+      if ((block.type === 'large' || block.type === 'small') && !block.subBlocks) {
+        const subBlocks = [];
+        if (block.title != null) subBlocks.push({ id: Date.now() + Math.random(), type: 'title', content: block.title });
+        if (block.content != null) subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: block.content });
+        if (block.type === 'large') {
+          if (block.imageUrl1) subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: block.imageUrl1 });
+          if (block.imageUrl2) subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: block.imageUrl2 });
+        }
+        block.subBlocks = subBlocks;
+        delete block.title;
+        delete block.content;
+        delete block.imageUrl1;
+        delete block.imageUrl2;
+      }
+      if((block.type === 'large' || block.type === 'small' || block.type === 'puretext' || block.type === 'mediumtext') && !block.backgroundColor) {
+        block.backgroundColor = 'default';
+      }
+      if((block.type === 'puretext' || block.type === 'mediumtext') && !block.fontSize) {
+        block.fontSize = 'small';
+      }
+      return block;
+    });
+  }
 
-    let initialBlocks = [
-        { id: Date.now() + 1, type: 'large', backgroundColor: 'default', title: '设计与工艺', titleBarColor: 'blue', content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: 'https://placehold.co/400x250/8b5cf6/ffffff?text=车身', imageUrl2: 'https://placehold.co/400x250/f97316/ffffff?text=内饰' },
-        { id: Date.now() + 6, type: 'divider', content: '核心技术', align: 'center', color: 'default' },
-        { id: Date.now() + 2, type: 'large', backgroundColor: 'default', title: '性能参数', titleBarColor: null, content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: null, imageUrl2: null },
-        { id: Date.now() + 7, type: 'puretext', backgroundColor: 'default', content: '我们重新定义了驾驶的乐趣', textColor: '#1f2937', fontSize: 'small' },
-        { id: Date.now() + 3, type: 'small', backgroundColor: 'default', title: '智能座舱', titleBarColor: 'purple', content: `<p>${PLACEHOLDER_INITIAL}</p>` },
-        { id: Date.now() + 4, type: 'small', backgroundColor: 'default', title: '安全配置', titleBarColor: 'orange', content: `<p>${PLACEHOLDER_INITIAL}</p>` },
-        { id: Date.now() + 5, type: 'small', backgroundColor: 'default', title: '另一块小卡片', titleBarColor: null, content: `<p>${PLACEHOLDER_INITIAL}</p>`},
-    ];
+  let initialBlocks = [
+    { id: Date.now() + 1, type: 'large', backgroundColor: 'default', title: '设计与工艺', titleBarColor: 'blue', content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: 'https://placehold.co/400x250/8b5cf6/ffffff?text=车身', imageUrl2: 'https://placehold.co/400x250/f97316/ffffff?text=内饰' },
+    { id: Date.now() + 6, type: 'divider', content: '核心技术', align: 'center', color: 'default' },
+    { id: Date.now() + 2, type: 'large', backgroundColor: 'default', title: '性能参数', titleBarColor: null, content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: null, imageUrl2: null },
+    { id: Date.now() + 7, type: 'puretext', backgroundColor: 'default', content: '我们重新定义了驾驶的乐趣', textColor: '#1f2937', fontSize: 'small' },
+    { id: Date.now() + 3, type: 'small', backgroundColor: 'default', title: '智能座舱', titleBarColor: 'purple', content: `<p>${PLACEHOLDER_INITIAL}</p>` },
+    { id: Date.now() + 4, type: 'small', backgroundColor: 'default', title: '安全配置', titleBarColor: 'orange', content: `<p>${PLACEHOLDER_INITIAL}</p>` },
+    { id: Date.now() + 5, type: 'small', backgroundColor: 'default', title: '另一块小卡片', titleBarColor: null, content: `<p>${PLACEHOLDER_INITIAL}</p>`},
+  ];
 
-    function render() {
-        renderEditor();
-        renderPreview();
-    }
+  function render() {
+    renderEditor();
+    renderPreview();
+  }
 
-    function renderEditor() {
-        const container = document.getElementById('editor-cards-container');
-        const headerTitle = document.getElementById('editor-header-title');
-        container.innerHTML = '';
-        document.body.onclick = null;
+  function renderEditor() {
+    const container = document.getElementById('editor-cards-container');
+    const headerTitle = document.getElementById('editor-header-title');
+    container.innerHTML = '';
+    document.body.onclick = null;
 
-        if (!selectedBlockId) {
-            headerTitle.textContent = '全局设置';
-            let coverImageEditorHtml = '';
-            if (coverImageUrl) {
-                coverImageEditorHtml = `<div class="cover-image-editor-preview" onclick="document.getElementById('cover-image-input').click()" title="点击替换封面"><img src="${coverImageUrl}"><button class="editor-image-delete-btn" onclick="event.stopPropagation(); deleteCoverImage()" title="删除封面"><i class="fas fa-times"></i></button></div>`;
-            } else {
-                coverImageEditorHtml = `<button class="custom-file-button h-32" onclick="document.getElementById('cover-image-input').click()"><i class="fas fa-image text-3xl mb-2"></i><span>上传报告封面</span></button>`;
-            }
+    if (!selectedBlockId) {
+      headerTitle.textContent = '全局设置';
+      let coverImageEditorHtml = '';
+      if (coverImageUrl) {
+        coverImageEditorHtml = `<div class="cover-image-editor-preview" onclick="document.getElementById('cover-image-input').click()" title="点击替换封面"><img src="${coverImageUrl}"><button class="editor-image-delete-btn" onclick="event.stopPropagation(); deleteCoverImage()" title="删除封面"><i class="fas fa-times"></i></button></div>`;
+      } else {
+        coverImageEditorHtml = `<button class="custom-file-button h-32" onclick="document.getElementById('cover-image-input').click()"><i class="fas fa-image text-3xl mb-2"></i><span>上传报告封面</span></button>`;
+      }
 
-            const layoutSettingsHtml = `<div class="mt-4 pt-4 border-t space-y-4"><div><label for="card-shadow-slider" class="text-sm font-medium text-gray-700 mb-2 block flex justify-between"><span>卡片阴影强度</span><span id="card-shadow-label">${cardShadowIntensity}%</span></label><input type="range" id="card-shadow-slider" min="0" max="100" value="${cardShadowIntensity}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateCardShadow(this.value)"></div></div>`;
+      const layoutSettingsHtml = `<div class="mt-4 pt-4 border-t space-y-4"><div><label for="card-shadow-slider" class="text-sm font-medium text-gray-700 mb-2 block flex justify-between"><span>卡片阴影强度</span><span id="card-shadow-label">${cardShadowIntensity}%</span></label><input type="range" id="card-shadow-slider" min="0" max="100" value="${cardShadowIntensity}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateCardShadow(this.value)"></div></div>`;
 
-            const finalAttributionEditorHtml = `<div class="attribution-editor mt-4 pt-4 border-t"><div class="flex items-center justify-between mb-2"><label for="show-final-attribution" class="text-sm font-medium text-gray-700 cursor-pointer">显示报告末尾注释</label><input type="checkbox" id="show-final-attribution" onchange="updateFinalAttribution('showFinalAttribution', this.checked, true)" ${showFinalAttribution ? 'checked' : ''}></div><div class="${showFinalAttribution ? '' : 'hidden'}"><div class="mb-2"><label class="text-xs font-medium text-gray-500 block mb-1">注释</label><div class="content-editor" contenteditable="true" data-placeholder="输入注释..." onpaste="handlePaste(event)" oninput="updateFinalAttribution('finalCaption', this.innerText)">${finalCaption}</div></div><div class="mb-2"><label class="text-xs font-medium text-gray-500 block mb-1">来源</label><div class="content-editor" contenteditable="true" data-placeholder="输入来源..." onpaste="handlePaste(event)" oninput="updateFinalAttribution('finalSource', this.innerText)">${finalSource}</div></div><div><label class="text-xs font-medium text-gray-500 block mb-1">对齐</label><div class="flex items-center gap-2"><button class="style-btn ${finalTextAlign === 'left' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'left', true)"><i class="fas fa-align-left"></i></button><button class="style-btn ${finalTextAlign === 'center' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'center', true)"><i class="fas fa-align-center"></i></button><button class="style-btn ${finalTextAlign === 'right' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'right', true)"><i class="fas fa-align-right"></i></button></div></div></div></div>`;
+      const finalAttributionEditorHtml = `<div class="attribution-editor mt-4 pt-4 border-t"><div class="flex items-center justify-between mb-2"><label for="show-final-attribution" class="text-sm font-medium text-gray-700 cursor-pointer">显示报告末尾注释</label><input type="checkbox" id="show-final-attribution" onchange="updateFinalAttribution('showFinalAttribution', this.checked, true)" ${showFinalAttribution ? 'checked' : ''}></div><div class="${showFinalAttribution ? '' : 'hidden'}"><div class="mb-2"><label class="text-xs font-medium text-gray-500 block mb-1">注释</label><div class="content-editor" contenteditable="true" data-placeholder="输入注释..." onpaste="handlePaste(event)" oninput="updateFinalAttribution('finalCaption', this.innerText)">${finalCaption}</div></div><div class="mb-2"><label class="text-xs font-medium text-gray-500 block mb-1">来源</label><div class="content-editor" contenteditable="true" data-placeholder="输入来源..." onpaste="handlePaste(event)" oninput="updateFinalAttribution('finalSource', this.innerText)">${finalSource}</div></div><div><label class="text-xs font-medium text-gray-500 block mb-1">对齐</label><div class="flex items-center gap-2"><button class="style-btn ${finalTextAlign === 'left' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'left', true)"><i class="fas fa-align-left"></i></button><button class="style-btn ${finalTextAlign === 'center' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'center', true)"><i class="fas fa-align-center"></i></button><button class="style-btn ${finalTextAlign === 'right' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'right', true)"><i class="fas fa-align-right"></i></button></div></div></div></div>`;
 
-            container.innerHTML = `<div class="global-settings-card">
+      container.innerHTML = `<div class="global-settings-card">
                 <div class="mb-4"><label class="text-sm font-medium text-gray-700 mb-2 block">报告文件名</label><input type="text" id="report-title-input" value="${reportTitle}" oninput="reportTitle = this.value"></div>
                 <div class="mb-4"><label class="text-sm font-medium text-gray-700 mb-2 block">报告封面</label>${coverImageEditorHtml}</div>
                 <div class="mb-4"><label for="cover-margin-slider" class="text-sm font-medium text-gray-700 mb-2 block flex justify-between"><span>封面下边距</span><span id="cover-margin-slider-label">${coverImageMarginBottom}px</span></label><input type="range" id="cover-margin-slider" min="0" max="100" value="${coverImageMarginBottom}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateCoverMargin(this.value)"></div>
@@ -265,455 +265,455 @@
                     <button class="control-btn w-full justify-center" onclick="exportProject()"><i class="fas fa-download"></i> 导出项目 (.json)</button>
                     <button class="control-btn w-full justify-center" style="background-color: #0d9488;" onclick="exportTemplate()"><i class="fas fa-file-alt"></i> 导出AI模板 (.json)</button>
                 </div></div>`;
-            return;
+      return;
+    }
+
+    const block = blocks.find(b => b.id === selectedBlockId);
+    if (!block) return;
+
+    headerTitle.textContent = `编辑: ${blockTypeNames[block.type]}`;
+    const card = document.createElement('div');
+    card.className = 'editor-card';
+    const getCompatibleTypes = () => compatibleTypesMatrix['title-blocks'].includes(block.type) ? compatibleTypesMatrix['title-blocks'] : compatibleTypesMatrix['no-title-blocks'];
+    let typeSwitcherHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">卡片类型</label><div class="custom-select-container"><div class="custom-select-trigger" onclick="toggleCustomSelect(event)"><span>${blockTypeNames[block.type]}</span><i class="fas fa-chevron-down text-xs"></i></div><div class="custom-select-options">${getCompatibleTypes().map(type => `<div class="custom-select-option" onclick="switchBlockType(${block.id}, '${type}')">${blockTypeNames[type]}</div>`).join('')}</div></div></div>`;
+    document.body.onclick = (e) => { if (!e.target.closest('.custom-select-container')) { document.querySelectorAll('.custom-select-options').forEach(el => el.classList.remove('show')); } };
+
+    let cardContent = '';
+    const backgroundSwatchesHtml = Object.entries(cardBackgroundColors).filter(([name]) => name !== 'default').map(([name, color]) => `<button class="color-swatch ${block.backgroundColor === name ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'backgroundColor', '${name}')" title="${name}"></button>`).join('');
+    const backgroundEditorHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">背景色</label><div class="flex items-center gap-2">${backgroundSwatchesHtml}<button class="w-6 h-6 rounded-full bg-white border border-gray-300 flex items-center justify-center ml-2" onclick="updateBlockStyle(${block.id}, 'backgroundColor', 'default')" title="默认白色"><i class="fas fa-times text-xs text-gray-600"></i></button></div></div>`;
+
+    switch (block.type) {
+      case 'large': case 'small':
+        cardContent = typeSwitcherHtml;
+        const titleBarSwatches = Object.entries(titleBarColors).map(([name, color]) => `<button class="color-swatch ${block.titleBarColor === name ? 'active' : ''}" style="background-color: ${color};" onclick="setTitleBarColor(${block.id}, '${name}')" title="${name}"></button>`).join('');
+        cardContent += `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题装饰条</label><div class="flex items-center gap-2">${titleBarSwatches}<button class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center ml-2" onclick="setTitleBarColor(${block.id}, null)" title="无"><i class="fas fa-times text-xs text-gray-600"></i></button></div></div>${backgroundEditorHtml}<hr class="my-4">`;
+        const titleSubBlock = block.subBlocks.find(sb => sb.type === 'title');
+        if (titleSubBlock) { cardContent += `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateSubBlock(${block.id}, ${titleSubBlock.id}, 'content', this.innerHTML)">${titleSubBlock.content}</div></div>`; }
+        const subBlocksContainerId = `sub-blocks-container-${block.id}`;
+        const imageSubBlocksCount = block.subBlocks.filter(sb => sb.type === 'image').length;
+        const editorLayoutClass = imageSubBlocksCount === 4 ? 'editor-layout-2x2' : '';
+        cardContent += `<div id="${subBlocksContainerId}" class="sub-blocks-list ${editorLayoutClass}">${renderSubBlocksEditor(block)}</div>`;
+        cardContent += `<div class="mt-4 pt-4 border-t flex gap-2"><button class="control-btn text-sm py-2 px-3 flex-1 justify-center" onclick="addSubBlock(${block.id}, 'content')"><i class="fas fa-plus"></i> 新增内容</button><button class="control-btn text-sm py-2 px-3 flex-1 justify-center" onclick="addSubBlock(${block.id}, 'image')"><i class="fas fa-image"></i> 新增图片</button></div>`;
+        setTimeout(() => setupSubBlockDragAndDrop(document.getElementById(subBlocksContainerId), block.id), 0);
+        break;
+      case 'divider':
+        cardContent = `${typeSwitcherHtml}<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4 flex items-center gap-4"><div class="flex items-center gap-2"><button class="style-btn ${block.align === 'left' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'left')" title="左对齐"><i class="fas fa-align-left"></i></button><button class="style-btn ${block.align === 'center' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'center')" title="居中"><i class="fas fa-align-center"></i></button><button class="style-btn ${block.align === 'right' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'right')" title="右对齐"><i class="fas fa-align-right"></i></button></div><div class="flex items-center gap-2"><button class="style-btn ${block.color === 'default' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'default')" title="默认色"><span class="w-4 h-4 rounded-full bg-gray-300 block"></span></button><button class="style-btn ${block.color === 'black' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'black')" title="黑色"><span class="w-4 h-4 rounded-full bg-gray-800 block"></span></button></div></div>`;
+        break;
+      case 'puretext': case 'mediumtext':
+        const colorSwatches = Object.entries(titleTextColors).map(([name, color]) => `<button class="color-swatch ${block.textColor === color ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'textColor', '${color}')" title="${name}"></button>`).join('');
+        const fontSizeButtons = Object.keys(fontSizes).map(size => `<button class="style-btn ${block.fontSize === size ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'fontSize', '${size}')">${{small:'小', medium:'中', large:'大'}[size]}</button>`).join('');
+        cardContent = `${typeSwitcherHtml}${backgroundEditorHtml}<hr class="my-4"><div><div id="editor-${block.id}" class="content-editor centered-editor bold-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4"><label class="text-sm font-medium text-gray-500 mb-2 block">文字样式</label><div class="flex items-center gap-x-6"><div class="flex items-center gap-2"><label class="text-sm text-gray-700">字号:</label>${fontSizeButtons}</div><div class="flex items-center gap-2"><label class="text-sm text-gray-700">颜色:</label>${colorSwatches}</div></div></div>`;
+        break;
+    }
+    card.innerHTML = cardContent;
+    container.appendChild(card);
+  }
+
+  function renderSubBlocksEditor(block) {
+    if (!block.subBlocks) return '';
+    return block.subBlocks.filter(sb => sb.type !== 'title').map(subBlock => {
+      let content = '';
+      const isDraggable = true;
+      const header = `<div class="sub-block-header"><span class="sub-block-title">${subBlock.type === 'content' ? '正文' : '图片'}</span><div class="sub-block-controls">${isDraggable ? '<i class="fas fa-grip-vertical sub-block-drag-handle"></i>' : ''}<i class="fas fa-trash-alt sub-block-delete-btn" onclick="deleteSubBlock(${block.id}, ${subBlock.id})"></i></div></div>`;
+      switch (subBlock.type) {
+        case 'content':
+          const editorId = `content-editor-${subBlock.id}`;
+          const colorButtonsHtml = Object.entries(titleBarColors).map(([name, color]) => `<button onclick="applyTextColor('${editorId}', '${color}')" title="${name}"><i class="fas fa-palette" style="color: ${color};"></i></button>`).join('');
+          const placeholderText = subBlock.content.includes(PLACEHOLDER_INITIAL) ? PLACEHOLDER_INITIAL : PLACEHOLDER_NEW_SUB;
+          const onFocusLogic = `if(this.innerHTML.trim() === '<p>${placeholderText}</p>') { this.innerHTML = '<p><br/></p>'; this.style.color=''; }`;
+          const onBlurLogic = `if(this.innerHTML.trim() === '' || this.innerHTML.trim() === '<p><br></p>' || this.innerHTML.trim() === '<p>&nbsp;</p>') { this.innerHTML = '<p>${placeholderText}</p>'; this.style.color='#9ca3af'; }`;
+          const initialStyle = subBlock.content.includes(PLACEHOLDER_INITIAL) || subBlock.content.includes(PLACEHOLDER_NEW_SUB) ? 'color:#9ca3af;' : '';
+          content = `<div class="toolbar"><button onclick="formatDoc('${editorId}', 'bold')" title="加粗"><i class="fas fa-bold"></i></button><button onclick="insertBoldDot('${editorId}')" title="插入圆点"><i class="fas fa-circle" style="font-size: 0.6em; vertical-align: middle;"></i></button>${colorButtonsHtml}<button onclick="applyHighlight('${editorId}', '${highlightColors.yellow}')" title="高亮黄"><i class="fas fa-highlighter" style="color: #f59e0b;"></i></button><button onclick="applyHighlight('${editorId}', '${highlightColors.blue}')" title="高亮蓝"><i class="fas fa-highlighter" style="color: #3b82f6;"></i></button><button onclick="applyHighlight('${editorId}', '${highlightColors.green}')" title="高亮绿"><i class="fas fa-highlighter" style="color: #22c55e;"></i></button><button onclick="applyHighlight('${editorId}', '${highlightColors.purple}')" title="高亮紫"><i class="fas fa-highlighter" style="color: #a855f7;"></i></button><button onclick="formatDoc('${editorId}', 'removeFormat')" title="清除格式"><i class="fas fa-eraser"></i></button></div><div id="${editorId}" class="content-editor" contenteditable="true" style="${initialStyle}" onfocus="${onFocusLogic}" onblur="${onBlurLogic}" onpaste="handlePaste(event)" oninput="this.style.color=''; updateSubBlock(${block.id}, ${subBlock.id}, 'content', this.innerHTML)">${subBlock.content}</div>`;
+          break;
+        case 'image':
+          const fileInputId = `file-input-${subBlock.id}`;
+          let imageEditorHtml = '';
+          if (subBlock.url) {
+            imageEditorHtml = `<div class="editor-image-preview" onclick="document.getElementById('${fileInputId}').click()" title="点击替换图片"><img src="${subBlock.url}"><button class="editor-image-delete-btn" onclick="event.stopPropagation(); deleteImage(${block.id}, ${subBlock.id})"><i class="fas fa-times"></i></button></div>`;
+          } else {
+            imageEditorHtml = `<button class="custom-file-button" onclick="document.getElementById('${fileInputId}').click()"><i class="fas fa-upload text-2xl mb-1"></i> <span>上传图片</span></button>`;
+          }
+          content = imageEditorHtml + `<input type="file" id="${fileInputId}" class="hidden" accept="image/*" onchange="updateImage(${block.id}, ${subBlock.id}, event)">`;
+          break;
+      }
+      return `<div class="sub-block-editor type-${subBlock.type}" data-sub-id="${subBlock.id}" draggable="${isDraggable}">${header}${content}</div>`;
+    }).join('');
+  }
+
+  function renderPreview() {
+    const canvas = document.getElementById('preview-canvas');
+    canvas.innerHTML = '';
+    if (coverImageUrl) {
+      const coverContainer = document.createElement('div');
+      coverContainer.className = 'preview-cover-image-container';
+      coverContainer.style.marginBottom = `${coverImageMarginBottom}px`;
+      const coverImg = document.createElement('img');
+      coverImg.src = coverImageUrl;
+      coverContainer.appendChild(coverImg);
+      canvas.appendChild(coverContainer);
+    }
+    for (const block of blocks) {
+      const element = createBlockElement(block);
+      element.dataset.id = block.id;
+      element.setAttribute('draggable', true);
+      element.onclick = (e) => { e.target.closest('.preview-delete-btn') || selectBlockForEditing(block.id); };
+      if (block.id === selectedBlockId) element.classList.add('preview-highlight');
+      const deleteBtn = document.createElement('div');
+      deleteBtn.className = 'preview-delete-btn';
+      deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+      deleteBtn.title = "删除卡片";
+      deleteBtn.onclick = (e) => { e.stopPropagation(); deleteBlock(block.id); };
+      element.appendChild(deleteBtn);
+      canvas.appendChild(element);
+    }
+    if (showFinalAttribution) {
+      const attributionBlock = document.createElement('div');
+      attributionBlock.className = 'final-attribution-block';
+      attributionBlock.style.textAlign = finalTextAlign;
+      let captionHtml = finalCaption ? `<p class="final-caption">${finalCaption.replace(/\n/g, '<br>')}</p>` : '';
+      let sourceHtml = finalSource ? `<p class="final-source">来源: ${finalSource.replace(/\n/g, '<br>')}</p>` : '';
+      attributionBlock.innerHTML = captionHtml + sourceHtml;
+      canvas.appendChild(attributionBlock);
+    }
+  }
+
+  function getCardShadowCss(intensity) {
+    if (intensity <= 0) return 'none';
+    const i = intensity / 100;
+    const alpha = (0.05 * i).toFixed(3);
+    return `0 ${10*i}px ${15*i}px ${-3*i}px rgba(0, 0, 0, ${alpha}), 0 ${4*i}px ${6*i}px ${-2*i}px rgba(0, 0, 0, ${alpha})`;
+  }
+
+  function createBlockElement(block) {
+    const div = document.createElement('div');
+    div.id = `preview-${block.id}`;
+    if (block.type !== 'divider') { div.style.boxShadow = getCardShadowCss(cardShadowIntensity); }
+    switch (block.type) {
+      case 'large': case 'small':
+        div.className = `preview-block ${block.type}`;
+        div.style.backgroundColor = cardBackgroundColors[block.backgroundColor] || cardBackgroundColors.default;
+        div.innerHTML = renderSubBlocksPreview(block);
+        break;
+      case 'divider':
+        div.className = `divider-text-preview align-${block.align || 'center'} color-${block.color || 'default'}`;
+        div.innerHTML = block.content;
+        break;
+      case 'mediumtext':
+        div.className = 'preview-block large';
+        div.style.backgroundColor = cardBackgroundColors[block.backgroundColor] || cardBackgroundColors.default;
+        div.innerHTML = `<div class="pure-text-preview-content" style="color: ${block.textColor || titleTextColors.black}; font-size: ${fontSizes[block.fontSize] || fontSizes.small};">${block.content}</div>`;
+        break;
+      case 'puretext':
+        div.className = 'preview-block small';
+        div.style.backgroundColor = cardBackgroundColors[block.backgroundColor] || cardBackgroundColors.default;
+        div.innerHTML = `<div class="pure-text-preview-content" style="color: ${block.textColor || titleTextColors.black}; font-size: ${fontSizes[block.fontSize] || fontSizes.small};">${block.content}</div>`;
+        break;
+    }
+    return div;
+  }
+
+  function renderSubBlocksPreview(block) {
+    if (!block.subBlocks) return '';
+    let html = '';
+    for (let i = 0; i < block.subBlocks.length; i++) {
+      const subBlock = block.subBlocks[i];
+      if (subBlock.type === 'title') {
+        const titleBarColorStyle = block.titleBarColor ? `background-color: ${titleBarColors[block.titleBarColor]};` : '';
+        html += `<div class="title-wrapper-preview">${block.titleBarColor ? `<div class="title-bar-preview" style="${titleBarColorStyle}"></div>` : ''}<h3 class="preview-title">${subBlock.content}</h3></div>`;
+      } else if (subBlock.type === 'content') {
+        html += `<div class="preview-content">${subBlock.content}</div>`;
+      } else if (subBlock.type === 'image') {
+        const imageGroup = [];
+        let imageGroupEnd = i;
+        while (imageGroupEnd < block.subBlocks.length && block.subBlocks[imageGroupEnd].type === 'image') {
+          if (block.subBlocks[imageGroupEnd].url) { imageGroup.push(block.subBlocks[imageGroupEnd]); }
+          imageGroupEnd++;
         }
-
-        const block = blocks.find(b => b.id === selectedBlockId);
-        if (!block) return;
-
-        headerTitle.textContent = `编辑: ${blockTypeNames[block.type]}`;
-        const card = document.createElement('div');
-        card.className = 'editor-card';
-        const getCompatibleTypes = () => compatibleTypesMatrix['title-blocks'].includes(block.type) ? compatibleTypesMatrix['title-blocks'] : compatibleTypesMatrix['no-title-blocks'];
-        let typeSwitcherHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">卡片类型</label><div class="custom-select-container"><div class="custom-select-trigger" onclick="toggleCustomSelect(event)"><span>${blockTypeNames[block.type]}</span><i class="fas fa-chevron-down text-xs"></i></div><div class="custom-select-options">${getCompatibleTypes().map(type => `<div class="custom-select-option" onclick="switchBlockType(${block.id}, '${type}')">${blockTypeNames[type]}</div>`).join('')}</div></div></div>`;
-        document.body.onclick = (e) => { if (!e.target.closest('.custom-select-container')) { document.querySelectorAll('.custom-select-options').forEach(el => el.classList.remove('show')); } };
-
-        let cardContent = '';
-        const backgroundSwatchesHtml = Object.entries(cardBackgroundColors).filter(([name]) => name !== 'default').map(([name, color]) => `<button class="color-swatch ${block.backgroundColor === name ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'backgroundColor', '${name}')" title="${name}"></button>`).join('');
-        const backgroundEditorHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">背景色</label><div class="flex items-center gap-2">${backgroundSwatchesHtml}<button class="w-6 h-6 rounded-full bg-white border border-gray-300 flex items-center justify-center ml-2" onclick="updateBlockStyle(${block.id}, 'backgroundColor', 'default')" title="默认白色"><i class="fas fa-times text-xs text-gray-600"></i></button></div></div>`;
-
-        switch (block.type) {
-            case 'large': case 'small':
-                cardContent = typeSwitcherHtml;
-                const titleBarSwatches = Object.entries(titleBarColors).map(([name, color]) => `<button class="color-swatch ${block.titleBarColor === name ? 'active' : ''}" style="background-color: ${color};" onclick="setTitleBarColor(${block.id}, '${name}')" title="${name}"></button>`).join('');
-                cardContent += `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题装饰条</label><div class="flex items-center gap-2">${titleBarSwatches}<button class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center ml-2" onclick="setTitleBarColor(${block.id}, null)" title="无"><i class="fas fa-times text-xs text-gray-600"></i></button></div></div>${backgroundEditorHtml}<hr class="my-4">`;
-                const titleSubBlock = block.subBlocks.find(sb => sb.type === 'title');
-                if (titleSubBlock) { cardContent += `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateSubBlock(${block.id}, ${titleSubBlock.id}, 'content', this.innerHTML)">${titleSubBlock.content}</div></div>`; }
-                const subBlocksContainerId = `sub-blocks-container-${block.id}`;
-                const imageSubBlocksCount = block.subBlocks.filter(sb => sb.type === 'image').length;
-                const editorLayoutClass = imageSubBlocksCount === 4 ? 'editor-layout-2x2' : '';
-                cardContent += `<div id="${subBlocksContainerId}" class="sub-blocks-list ${editorLayoutClass}">${renderSubBlocksEditor(block)}</div>`;
-                cardContent += `<div class="mt-4 pt-4 border-t flex gap-2"><button class="control-btn text-sm py-2 px-3 flex-1 justify-center" onclick="addSubBlock(${block.id}, 'content')"><i class="fas fa-plus"></i> 新增内容</button><button class="control-btn text-sm py-2 px-3 flex-1 justify-center" onclick="addSubBlock(${block.id}, 'image')"><i class="fas fa-image"></i> 新增图片</button></div>`;
-                setTimeout(() => setupSubBlockDragAndDrop(document.getElementById(subBlocksContainerId), block.id), 0);
-                break;
-            case 'divider':
-                cardContent = `${typeSwitcherHtml}<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4 flex items-center gap-4"><div class="flex items-center gap-2"><button class="style-btn ${block.align === 'left' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'left')" title="左对齐"><i class="fas fa-align-left"></i></button><button class="style-btn ${block.align === 'center' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'center')" title="居中"><i class="fas fa-align-center"></i></button><button class="style-btn ${block.align === 'right' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'right')" title="右对齐"><i class="fas fa-align-right"></i></button></div><div class="flex items-center gap-2"><button class="style-btn ${block.color === 'default' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'default')" title="默认色"><span class="w-4 h-4 rounded-full bg-gray-300 block"></span></button><button class="style-btn ${block.color === 'black' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'black')" title="黑色"><span class="w-4 h-4 rounded-full bg-gray-800 block"></span></button></div></div>`;
-                break;
-            case 'puretext': case 'mediumtext':
-                const colorSwatches = Object.entries(titleTextColors).map(([name, color]) => `<button class="color-swatch ${block.textColor === color ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'textColor', '${color}')" title="${name}"></button>`).join('');
-                const fontSizeButtons = Object.keys(fontSizes).map(size => `<button class="style-btn ${block.fontSize === size ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'fontSize', '${size}')">${{small:'小', medium:'中', large:'大'}[size]}</button>`).join('');
-                cardContent = `${typeSwitcherHtml}${backgroundEditorHtml}<hr class="my-4"><div><div id="editor-${block.id}" class="content-editor centered-editor bold-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4"><label class="text-sm font-medium text-gray-500 mb-2 block">文字样式</label><div class="flex items-center gap-x-6"><div class="flex items-center gap-2"><label class="text-sm text-gray-700">字号:</label>${fontSizeButtons}</div><div class="flex items-center gap-2"><label class="text-sm text-gray-700">颜色:</label>${colorSwatches}</div></div></div>`;
-                break;
+        if (imageGroup.length > 0) {
+          const layoutClass = imageGroup.length === 4 ? 'layout-2x2' : '';
+          let imageContainer = `<div class="preview-image-container ${layoutClass}">`;
+          imageContainer += imageGroup.map(imgSubBlock => `<div class="img-wrapper"><img src="${imgSubBlock.url}" draggable="false"></div>`).join('');
+          imageContainer += '</div>';
+          html += imageContainer;
         }
-        card.innerHTML = cardContent;
-        container.appendChild(card);
+        i = imageGroupEnd - 1;
+      }
     }
+    return html;
+  }
 
-    function renderSubBlocksEditor(block) {
-        if (!block.subBlocks) return '';
-        return block.subBlocks.filter(sb => sb.type !== 'title').map(subBlock => {
-            let content = '';
-            const isDraggable = true;
-            const header = `<div class="sub-block-header"><span class="sub-block-title">${subBlock.type === 'content' ? '正文' : '图片'}</span><div class="sub-block-controls">${isDraggable ? '<i class="fas fa-grip-vertical sub-block-drag-handle"></i>' : ''}<i class="fas fa-trash-alt sub-block-delete-btn" onclick="deleteSubBlock(${block.id}, ${subBlock.id})"></i></div></div>`;
-            switch (subBlock.type) {
-                case 'content':
-                    const editorId = `content-editor-${subBlock.id}`;
-                    const colorButtonsHtml = Object.entries(titleBarColors).map(([name, color]) => `<button onclick="applyTextColor('${editorId}', '${color}')" title="${name}"><i class="fas fa-palette" style="color: ${color};"></i></button>`).join('');
-                    const placeholderText = subBlock.content.includes(PLACEHOLDER_INITIAL) ? PLACEHOLDER_INITIAL : PLACEHOLDER_NEW_SUB;
-                    const onFocusLogic = `if(this.innerHTML.trim() === '<p>${placeholderText}</p>') { this.innerHTML = '<p><br/></p>'; this.style.color=''; }`;
-                    const onBlurLogic = `if(this.innerHTML.trim() === '' || this.innerHTML.trim() === '<p><br></p>' || this.innerHTML.trim() === '<p>&nbsp;</p>') { this.innerHTML = '<p>${placeholderText}</p>'; this.style.color='#9ca3af'; }`;
-                    const initialStyle = subBlock.content.includes(PLACEHOLDER_INITIAL) || subBlock.content.includes(PLACEHOLDER_NEW_SUB) ? 'color:#9ca3af;' : '';
-                    content = `<div class="toolbar"><button onclick="formatDoc('${editorId}', 'bold')" title="加粗"><i class="fas fa-bold"></i></button><button onclick="insertBoldDot('${editorId}')" title="插入圆点"><i class="fas fa-circle" style="font-size: 0.6em; vertical-align: middle;"></i></button>${colorButtonsHtml}<button onclick="applyHighlight('${editorId}', '${highlightColors.yellow}')" title="高亮黄"><i class="fas fa-highlighter" style="color: #f59e0b;"></i></button><button onclick="applyHighlight('${editorId}', '${highlightColors.blue}')" title="高亮蓝"><i class="fas fa-highlighter" style="color: #3b82f6;"></i></button><button onclick="applyHighlight('${editorId}', '${highlightColors.green}')" title="高亮绿"><i class="fas fa-highlighter" style="color: #22c55e;"></i></button><button onclick="applyHighlight('${editorId}', '${highlightColors.purple}')" title="高亮紫"><i class="fas fa-highlighter" style="color: #a855f7;"></i></button><button onclick="formatDoc('${editorId}', 'removeFormat')" title="清除格式"><i class="fas fa-eraser"></i></button></div><div id="${editorId}" class="content-editor" contenteditable="true" style="${initialStyle}" onfocus="${onFocusLogic}" onblur="${onBlurLogic}" onpaste="handlePaste(event)" oninput="this.style.color=''; updateSubBlock(${block.id}, ${subBlock.id}, 'content', this.innerHTML)">${subBlock.content}</div>`;
-                    break;
-                case 'image':
-                    const fileInputId = `file-input-${subBlock.id}`;
-                    let imageEditorHtml = '';
-                    if (subBlock.url) {
-                        imageEditorHtml = `<div class="editor-image-preview" onclick="document.getElementById('${fileInputId}').click()" title="点击替换图片"><img src="${subBlock.url}"><button class="editor-image-delete-btn" onclick="event.stopPropagation(); deleteImage(${block.id}, ${subBlock.id})"><i class="fas fa-times"></i></button></div>`;
-                    } else {
-                        imageEditorHtml = `<button class="custom-file-button" onclick="document.getElementById('${fileInputId}').click()"><i class="fas fa-upload text-2xl mb-1"></i> <span>上传图片</span></button>`;
-                    }
-                    content = imageEditorHtml + `<input type="file" id="${fileInputId}" class="hidden" accept="image/*" onchange="updateImage(${block.id}, ${subBlock.id}, event)">`;
-                    break;
-            }
-            return `<div class="sub-block-editor type-${subBlock.type}" data-sub-id="${subBlock.id}" draggable="${isDraggable}">${header}${content}</div>`;
-        }).join('');
+  function toggleCustomSelect(event) { event.stopPropagation(); const container = event.currentTarget.closest('.custom-select-container'); const options = container.querySelector('.custom-select-options'); options.classList.toggle('show'); }
+  function updateCoverMargin(value) {
+    coverImageMarginBottom = parseInt(value, 10);
+    const marginLabel = document.getElementById('cover-margin-slider-label');
+    if (marginLabel) { marginLabel.textContent = `${coverImageMarginBottom}px`; }
+    const coverPreview = document.querySelector('.preview-cover-image-container');
+    if (coverPreview) { coverPreview.style.marginBottom = `${coverImageMarginBottom}px`; }
+  }
+  function updateCardShadow(value) {
+    cardShadowIntensity = parseInt(value, 10);
+    document.getElementById('card-shadow-label').textContent = `${cardShadowIntensity}%`;
+    const shadowCss = getCardShadowCss(cardShadowIntensity);
+    document.querySelectorAll('.preview-block').forEach(el => el.style.boxShadow = shadowCss);
+  }
+  function updateFinalAttribution(key, value, fullRender = false) {
+    const stateMap = { showFinalAttribution: (val) => showFinalAttribution = val, finalCaption: (val) => finalCaption = val, finalSource: (val) => finalSource = val, finalTextAlign: (val) => finalTextAlign = val, };
+    if(stateMap[key]) stateMap[key](value);
+    if (fullRender) { render(); } else { renderPreview(); }
+  }
+  function addBlock(type) {
+    const newBlock = { id: Date.now(), type: type, backgroundColor: 'default' };
+    if (type === 'divider') { newBlock.content = '大标题文本'; newBlock.align = 'center'; newBlock.color = 'default'; delete newBlock.backgroundColor; }
+    else if (type === 'puretext') { newBlock.content = '输入小标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'small'; }
+    else if (type === 'mediumtext'){ newBlock.content = '输入中标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'medium'; }
+    else if (type === 'large' || type === 'small') {
+      newBlock.titleBarColor = null;
+      newBlock.subBlocks = [
+        { id: Date.now() + 1, type: 'title', content: '新卡片标题' },
+        { id: Date.now() + 2, type: 'content', content: `<p>${PLACEHOLDER_INITIAL}</p>` }
+      ];
+      if (type === 'large') { newBlock.subBlocks.push({ id: Date.now() + 3, type: 'image', url: null }); }
     }
+    if (selectedBlockId) { const selectedIndex = blocks.findIndex(b => b.id === selectedBlockId); if (selectedIndex > -1) { blocks.splice(selectedIndex + 1, 0, newBlock); } else { blocks.push(newBlock); } } else { blocks.push(newBlock); }
+    selectBlockForEditing(newBlock.id);
+    hideAddDropdown(true);
+  }
+  function addSubBlock(blockId, type) {
+    const block = blocks.find(b => b.id === blockId);
+    if (block && block.subBlocks) {
+      const newSubBlock = { id: Date.now() + Math.random(), type: type };
+      if (type === 'content') newSubBlock.content = `<p>${PLACEHOLDER_NEW_SUB}</p>`;
+      if (type === 'image') newSubBlock.url = null;
+      block.subBlocks.push(newSubBlock);
+      render();
+    }
+  }
+  function deleteSubBlock(blockId, subBlockId) { const block = blocks.find(b => b.id === blockId); if(block && block.subBlocks) { block.subBlocks = block.subBlocks.filter(sb => sb.id !== subBlockId); render(); } }
+  function deleteBlock(id) {
+    const blockIndex = blocks.findIndex(b => b.id === id);
+    if (blockIndex > -1) { lastDeletedBlock = { block: JSON.parse(JSON.stringify(blocks[blockIndex])), index: blockIndex }; blocks.splice(blockIndex, 1); showUndoToast(); }
+    if (selectedBlockId === id) selectBlockForEditing(null);
+    render();
+  }
+  function hideUndoToast() { document.getElementById('undo-toast').classList.remove('show'); document.removeEventListener('click', hideUndoToast, true); }
+  function showUndoToast() { const toast = document.getElementById('undo-toast'); toast.classList.add('show'); setTimeout(() => document.addEventListener('click', hideUndoToast, true), 100); }
+  function undoDelete(event) { event.stopPropagation(); if (lastDeletedBlock) { blocks.splice(lastDeletedBlock.index, 0, lastDeletedBlock.block); lastDeletedBlock = null; hideUndoToast(); render(); } }
+  function updateBlock(id, key, value) { const block = blocks.find(b => b.id === id); if (block) { block[key] = value; renderPreview(); } }
+  function updateBlockStyle(id, key, value) { const block = blocks.find(b => b.id === id); if(block) { block[key] = value; render(); } }
+  function updateSubBlock(blockId, subBlockId, key, value) {
+    const block = blocks.find(b => b.id === blockId);
+    if (block && block.subBlocks) {
+      const subBlock = block.subBlocks.find(sb => sb.id === subBlockId);
+      if (subBlock) { if (key === 'content' && (value.includes(PLACEHOLDER_INITIAL) || value.includes(PLACEHOLDER_NEW_SUB))) { return; } subBlock[key] = value; }
+      renderPreview();
+    }
+  }
+  function updateCoverImage(event) {
+    const file = event.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => { coverImageUrl = e.target.result; render(); };
+    reader.readAsDataURL(file);
+  }
+  function deleteCoverImage() {
+    coverImageUrl = null;
+    const fileInput = document.getElementById('cover-image-input');
+    if (fileInput) { fileInput.value = ''; }
+    render();
+  }
+  function setTitleBarColor(id, colorName) { const block = blocks.find(b => b.id === id); if (block) { block.titleBarColor = block.titleBarColor === colorName ? null : colorName; render(); } }
+  function switchBlockType(id, newType) {
+    const block = blocks.find(b => b.id === id);
+    if (block && block.type !== newType) {
+      const oldType = block.type; block.type = newType;
+      const wasTitleBlock = compatibleTypesMatrix['no-title-blocks'].includes(oldType);
+      const isTitleBlock = compatibleTypesMatrix['no-title-blocks'].includes(newType);
+      if (isTitleBlock && !wasTitleBlock) {
+        block.content = block.subBlocks?.find(sb => sb.type === 'title')?.content || '新标题';
+        if(newType === 'puretext') block.fontSize = 'small';
+        if(newType === 'mediumtext') block.fontSize = 'medium';
+        if(newType === 'divider') { delete block.fontSize; delete block.textColor; }
+        delete block.subBlocks;
+      } else if (!isTitleBlock && wasTitleBlock) {
+        block.subBlocks = [{id: Date.now()+1, type: 'title', content: block.content || '新卡片标题'}];
+        block.backgroundColor = 'default';
+        delete block.content;
+      }
+      render();
+    }
+  }
+  function updateImage(blockId, subBlockId, event) {
+    const file = event.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => { updateSubBlock(blockId, subBlockId, 'url', e.target.result); render(); };
+    reader.readAsDataURL(file);
+  }
+  function deleteImage(blockId, subBlockId) { updateSubBlock(blockId, subBlockId, 'url', null); render(); }
+  function selectBlockForEditing(id) { selectedBlockId = id; render(); }
+  function handlePaste(event) { event.preventDefault(); const text = event.clipboardData.getData('text/plain'); document.execCommand('insertText', false, text); }
+  function getEditor(editorId) { return document.getElementById(editorId); }
+  function formatDoc(editorId, command) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand(command, false, null); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
+  function applyHighlight(editorId, color) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand('hiliteColor', false, color); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
+  function applyTextColor(editorId, color) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand('foreColor', false, color); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
+  function insertBoldDot(editorId) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand('insertHTML', false, '<strong>&bull;</strong>&nbsp;'); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
 
-    function renderPreview() {
-        const canvas = document.getElementById('preview-canvas');
-        canvas.innerHTML = '';
-        if (coverImageUrl) {
-            const coverContainer = document.createElement('div');
-            coverContainer.className = 'preview-cover-image-container';
-            coverContainer.style.marginBottom = `${coverImageMarginBottom}px`;
-            const coverImg = document.createElement('img');
-            coverImg.src = coverImageUrl;
-            coverContainer.appendChild(coverImg);
-            canvas.appendChild(coverContainer);
-        }
-        for (const block of blocks) {
-            const element = createBlockElement(block);
-            element.dataset.id = block.id;
-            element.setAttribute('draggable', true);
-            element.onclick = (e) => { e.target.closest('.preview-delete-btn') || selectBlockForEditing(block.id); };
-            if (block.id === selectedBlockId) element.classList.add('preview-highlight');
-            const deleteBtn = document.createElement('div');
-            deleteBtn.className = 'preview-delete-btn';
-            deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
-            deleteBtn.title = "删除卡片";
-            deleteBtn.onclick = (e) => { e.stopPropagation(); deleteBlock(block.id); };
-            element.appendChild(deleteBtn);
-            canvas.appendChild(element);
-        }
-        if (showFinalAttribution) {
-            const attributionBlock = document.createElement('div');
-            attributionBlock.className = 'final-attribution-block';
-            attributionBlock.style.textAlign = finalTextAlign;
-            let captionHtml = finalCaption ? `<p class="final-caption">${finalCaption.replace(/\n/g, '<br>')}</p>` : '';
-            let sourceHtml = finalSource ? `<p class="final-source">来源: ${finalSource.replace(/\n/g, '<br>')}</p>` : '';
-            attributionBlock.innerHTML = captionHtml + sourceHtml;
-            canvas.appendChild(attributionBlock);
-        }
-    }
-
-    function getCardShadowCss(intensity) {
-        if (intensity <= 0) return 'none';
-        const i = intensity / 100;
-        const alpha = (0.05 * i).toFixed(3);
-        return `0 ${10*i}px ${15*i}px ${-3*i}px rgba(0, 0, 0, ${alpha}), 0 ${4*i}px ${6*i}px ${-2*i}px rgba(0, 0, 0, ${alpha})`;
-    }
-
-    function createBlockElement(block) {
-        const div = document.createElement('div');
-        div.id = `preview-${block.id}`;
-        if (block.type !== 'divider') { div.style.boxShadow = getCardShadowCss(cardShadowIntensity); }
-        switch (block.type) {
-            case 'large': case 'small':
-                div.className = `preview-block ${block.type}`;
-                div.style.backgroundColor = cardBackgroundColors[block.backgroundColor] || cardBackgroundColors.default;
-                div.innerHTML = renderSubBlocksPreview(block);
-                break;
-            case 'divider':
-                div.className = `divider-text-preview align-${block.align || 'center'} color-${block.color || 'default'}`;
-                div.innerHTML = block.content;
-                break;
-            case 'mediumtext':
-                div.className = 'preview-block large';
-                div.style.backgroundColor = cardBackgroundColors[block.backgroundColor] || cardBackgroundColors.default;
-                div.innerHTML = `<div class="pure-text-preview-content" style="color: ${block.textColor || titleTextColors.black}; font-size: ${fontSizes[block.fontSize] || fontSizes.small};">${block.content}</div>`;
-                break;
-            case 'puretext':
-                div.className = 'preview-block small';
-                div.style.backgroundColor = cardBackgroundColors[block.backgroundColor] || cardBackgroundColors.default;
-                div.innerHTML = `<div class="pure-text-preview-content" style="color: ${block.textColor || titleTextColors.black}; font-size: ${fontSizes[block.fontSize] || fontSizes.small};">${block.content}</div>`;
-                break;
-        }
-        return div;
-    }
-
-    function renderSubBlocksPreview(block) {
-        if (!block.subBlocks) return '';
-        let html = '';
-        for (let i = 0; i < block.subBlocks.length; i++) {
-            const subBlock = block.subBlocks[i];
-            if (subBlock.type === 'title') {
-                const titleBarColorStyle = block.titleBarColor ? `background-color: ${titleBarColors[block.titleBarColor]};` : '';
-                html += `<div class="title-wrapper-preview">${block.titleBarColor ? `<div class="title-bar-preview" style="${titleBarColorStyle}"></div>` : ''}<h3 class="preview-title">${subBlock.content}</h3></div>`;
-            } else if (subBlock.type === 'content') {
-                html += `<div class="preview-content">${subBlock.content}</div>`;
-            } else if (subBlock.type === 'image') {
-                const imageGroup = [];
-                let imageGroupEnd = i;
-                while (imageGroupEnd < block.subBlocks.length && block.subBlocks[imageGroupEnd].type === 'image') {
-                    if (block.subBlocks[imageGroupEnd].url) { imageGroup.push(block.subBlocks[imageGroupEnd]); }
-                    imageGroupEnd++;
-                }
-                if (imageGroup.length > 0) {
-                    const layoutClass = imageGroup.length === 4 ? 'layout-2x2' : '';
-                    let imageContainer = `<div class="preview-image-container ${layoutClass}">`;
-                    imageContainer += imageGroup.map(imgSubBlock => `<div class="img-wrapper"><img src="${imgSubBlock.url}" draggable="false"></div>`).join('');
-                    imageContainer += '</div>';
-                    html += imageContainer;
-                }
-                i = imageGroupEnd - 1;
-            }
-        }
-        return html;
-    }
-
-    function toggleCustomSelect(event) { event.stopPropagation(); const container = event.currentTarget.closest('.custom-select-container'); const options = container.querySelector('.custom-select-options'); options.classList.toggle('show'); }
-    function updateCoverMargin(value) {
-        coverImageMarginBottom = parseInt(value, 10);
-        const marginLabel = document.getElementById('cover-margin-slider-label');
-        if (marginLabel) { marginLabel.textContent = `${coverImageMarginBottom}px`; }
-        const coverPreview = document.querySelector('.preview-cover-image-container');
-        if (coverPreview) { coverPreview.style.marginBottom = `${coverImageMarginBottom}px`; }
-    }
-    function updateCardShadow(value) {
-        cardShadowIntensity = parseInt(value, 10);
-        document.getElementById('card-shadow-label').textContent = `${cardShadowIntensity}%`;
-        const shadowCss = getCardShadowCss(cardShadowIntensity);
-        document.querySelectorAll('.preview-block').forEach(el => el.style.boxShadow = shadowCss);
-    }
-    function updateFinalAttribution(key, value, fullRender = false) {
-        const stateMap = { showFinalAttribution: (val) => showFinalAttribution = val, finalCaption: (val) => finalCaption = val, finalSource: (val) => finalSource = val, finalTextAlign: (val) => finalTextAlign = val, };
-        if(stateMap[key]) stateMap[key](value);
-        if (fullRender) { render(); } else { renderPreview(); }
-    }
-    function addBlock(type) {
-        const newBlock = { id: Date.now(), type: type, backgroundColor: 'default' };
-        if (type === 'divider') { newBlock.content = '大标题文本'; newBlock.align = 'center'; newBlock.color = 'default'; delete newBlock.backgroundColor; }
-        else if (type === 'puretext') { newBlock.content = '输入小标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'small'; }
-        else if (type === 'mediumtext'){ newBlock.content = '输入中标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'medium'; }
-        else if (type === 'large' || type === 'small') {
-            newBlock.titleBarColor = null;
-            newBlock.subBlocks = [
-                { id: Date.now() + 1, type: 'title', content: '新卡片标题' },
-                { id: Date.now() + 2, type: 'content', content: `<p>${PLACEHOLDER_INITIAL}</p>` }
-            ];
-            if (type === 'large') { newBlock.subBlocks.push({ id: Date.now() + 3, type: 'image', url: null }); }
-        }
-        if (selectedBlockId) { const selectedIndex = blocks.findIndex(b => b.id === selectedBlockId); if (selectedIndex > -1) { blocks.splice(selectedIndex + 1, 0, newBlock); } else { blocks.push(newBlock); } } else { blocks.push(newBlock); }
-        selectBlockForEditing(newBlock.id);
-        hideAddDropdown(true);
-    }
-    function addSubBlock(blockId, type) {
-        const block = blocks.find(b => b.id === blockId);
-        if (block && block.subBlocks) {
-            const newSubBlock = { id: Date.now() + Math.random(), type: type };
-            if (type === 'content') newSubBlock.content = `<p>${PLACEHOLDER_NEW_SUB}</p>`;
-            if (type === 'image') newSubBlock.url = null;
-            block.subBlocks.push(newSubBlock);
-            render();
-        }
-    }
-    function deleteSubBlock(blockId, subBlockId) { const block = blocks.find(b => b.id === blockId); if(block && block.subBlocks) { block.subBlocks = block.subBlocks.filter(sb => sb.id !== subBlockId); render(); } }
-    function deleteBlock(id) {
-        const blockIndex = blocks.findIndex(b => b.id === id);
-        if (blockIndex > -1) { lastDeletedBlock = { block: JSON.parse(JSON.stringify(blocks[blockIndex])), index: blockIndex }; blocks.splice(blockIndex, 1); showUndoToast(); }
-        if (selectedBlockId === id) selectBlockForEditing(null);
+  function setupDragAndDrop() {
+    document.querySelector('.scroll-wrapper').onclick = (e) => { if (e.target === e.currentTarget) { selectBlockForEditing(null); } };
+    const container = document.getElementById('preview-canvas');
+    setupDraggableContainer(container, (newOrder) => { const blockOrder = newOrder.filter(id => blocks.some(b => b.id == id)); blocks = blockOrder.map(id => blocks.find(b => b.id == parseInt(id))); render(); }, '[data-id]');
+  }
+  function setupSubBlockDragAndDrop(container, blockId) {
+    if (!container) return;
+    setupDraggableContainer(container, (newOrder) => {
+      const block = blocks.find(b => b.id === blockId);
+      if (block && block.subBlocks) {
+        const titleBlock = block.subBlocks.find(sb => sb.type === 'title');
+        const newOrderedMovable = newOrder.map(id => block.subBlocks.find(sb => sb.id === parseFloat(id)));
+        block.subBlocks = [titleBlock, ...newOrderedMovable].filter(Boolean);
         render();
-    }
-    function hideUndoToast() { document.getElementById('undo-toast').classList.remove('show'); document.removeEventListener('click', hideUndoToast, true); }
-    function showUndoToast() { const toast = document.getElementById('undo-toast'); toast.classList.add('show'); setTimeout(() => document.addEventListener('click', hideUndoToast, true), 100); }
-    function undoDelete(event) { event.stopPropagation(); if (lastDeletedBlock) { blocks.splice(lastDeletedBlock.index, 0, lastDeletedBlock.block); lastDeletedBlock = null; hideUndoToast(); render(); } }
-    function updateBlock(id, key, value) { const block = blocks.find(b => b.id === id); if (block) { block[key] = value; renderPreview(); } }
-    function updateBlockStyle(id, key, value) { const block = blocks.find(b => b.id === id); if(block) { block[key] = value; render(); } }
-    function updateSubBlock(blockId, subBlockId, key, value) {
-        const block = blocks.find(b => b.id === blockId);
-        if (block && block.subBlocks) {
-            const subBlock = block.subBlocks.find(sb => sb.id === subBlockId);
-            if (subBlock) { if (key === 'content' && (value.includes(PLACEHOLDER_INITIAL) || value.includes(PLACEHOLDER_NEW_SUB))) { return; } subBlock[key] = value; }
-            renderPreview();
-        }
-    }
-    function updateCoverImage(event) {
-        const file = event.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => { coverImageUrl = e.target.result; render(); };
-        reader.readAsDataURL(file);
-    }
-    function deleteCoverImage() {
-        coverImageUrl = null;
-        const fileInput = document.getElementById('cover-image-input');
-        if (fileInput) { fileInput.value = ''; }
-        render();
-    }
-    function setTitleBarColor(id, colorName) { const block = blocks.find(b => b.id === id); if (block) { block.titleBarColor = block.titleBarColor === colorName ? null : colorName; render(); } }
-    function switchBlockType(id, newType) {
-        const block = blocks.find(b => b.id === id);
-        if (block && block.type !== newType) {
-            const oldType = block.type; block.type = newType;
-            const wasTitleBlock = compatibleTypesMatrix['no-title-blocks'].includes(oldType);
-            const isTitleBlock = compatibleTypesMatrix['no-title-blocks'].includes(newType);
-            if (isTitleBlock && !wasTitleBlock) {
-                block.content = block.subBlocks?.find(sb => sb.type === 'title')?.content || '新标题';
-                if(newType === 'puretext') block.fontSize = 'small';
-                if(newType === 'mediumtext') block.fontSize = 'medium';
-                if(newType === 'divider') { delete block.fontSize; delete block.textColor; }
-                delete block.subBlocks;
-            } else if (!isTitleBlock && wasTitleBlock) {
-                block.subBlocks = [{id: Date.now()+1, type: 'title', content: block.content || '新卡片标题'}];
-                block.backgroundColor = 'default';
-                delete block.content;
-            }
-            render();
-        }
-    }
-    function updateImage(blockId, subBlockId, event) {
-        const file = event.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => { updateSubBlock(blockId, subBlockId, 'url', e.target.result); render(); };
-        reader.readAsDataURL(file);
-    }
-    function deleteImage(blockId, subBlockId) { updateSubBlock(blockId, subBlockId, 'url', null); render(); }
-    function selectBlockForEditing(id) { selectedBlockId = id; render(); }
-    function handlePaste(event) { event.preventDefault(); const text = event.clipboardData.getData('text/plain'); document.execCommand('insertText', false, text); }
-    function getEditor(editorId) { return document.getElementById(editorId); }
-    function formatDoc(editorId, command) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand(command, false, null); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
-    function applyHighlight(editorId, color) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand('hiliteColor', false, color); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
-    function applyTextColor(editorId, color) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand('foreColor', false, color); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
-    function insertBoldDot(editorId) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand('insertHTML', false, '<strong>&bull;</strong>&nbsp;'); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
+      }
+    }, '[data-sub-id]');
+  }
+  function setupDraggableContainer(container, onDropCallback, selector = '[draggable="true"]') {
+    let draggedItem = null;
+    container.addEventListener('dragstart', (e) => { if (e.target.matches(selector)) { draggedItem = e.target; setTimeout(() => { if (draggedItem) draggedItem.classList.add('dragging'); }, 0); } });
+    container.addEventListener('dragend', () => { if (draggedItem) { draggedItem.classList.remove('dragging'); draggedItem = null; } });
+    container.addEventListener('dragover', (e) => {
+      e.preventDefault(); if (!draggedItem) return;
+      const scrollContainer = container.closest('.scroll-wrapper');
+      if (scrollContainer) { const scrollRect = scrollContainer.getBoundingClientRect(); const threshold = 60; const scrollSpeed = 10; if (e.clientY < scrollRect.top + threshold) { scrollContainer.scrollTop -= scrollSpeed; } else if (e.clientY > scrollRect.bottom - threshold) { scrollContainer.scrollTop += scrollSpeed; } }
+      const afterElement = getDragAfterElement(container, e.clientY, `${selector}:not(.dragging)`);
+      if (afterElement == null) { container.appendChild(draggedItem); } else { container.insertBefore(draggedItem, afterElement); }
+    });
+    container.addEventListener('drop', (e) => { e.preventDefault(); if (!draggedItem) return; const newOrder = [...container.querySelectorAll(selector)].map(el => el.dataset.id || el.dataset.subId); onDropCallback(newOrder); });
+  }
+  function getDragAfterElement(container, y, selector) { const draggableElements = [...container.querySelectorAll(selector)]; return draggableElements.reduce((closest, child) => { const box = child.getBoundingClientRect(); const offset = y - box.top - box.height / 2; if (offset < 0 && offset > closest.offset) { return { offset: offset, element: child }; } else { return closest; } }, { offset: Number.NEGATIVE_INFINITY }).element; }
 
-    function setupDragAndDrop() {
-        document.querySelector('.scroll-wrapper').onclick = (e) => { if (e.target === e.currentTarget) { selectBlockForEditing(null); } };
-        const container = document.getElementById('preview-canvas');
-        setupDraggableContainer(container, (newOrder) => { const blockOrder = newOrder.filter(id => blocks.some(b => b.id == id)); blocks = blockOrder.map(id => blocks.find(b => b.id == parseInt(id))); render(); }, '[data-id]');
-    }
-    function setupSubBlockDragAndDrop(container, blockId) {
-        if (!container) return;
-        setupDraggableContainer(container, (newOrder) => {
-            const block = blocks.find(b => b.id === blockId);
-            if (block && block.subBlocks) {
-                const titleBlock = block.subBlocks.find(sb => sb.type === 'title');
-                const newOrderedMovable = newOrder.map(id => block.subBlocks.find(sb => sb.id === parseFloat(id)));
-                block.subBlocks = [titleBlock, ...newOrderedMovable].filter(Boolean);
-                render();
-            }
-        }, '[data-sub-id]');
-    }
-    function setupDraggableContainer(container, onDropCallback, selector = '[draggable="true"]') {
-        let draggedItem = null;
-        container.addEventListener('dragstart', (e) => { if (e.target.matches(selector)) { draggedItem = e.target; setTimeout(() => { if (draggedItem) draggedItem.classList.add('dragging'); }, 0); } });
-        container.addEventListener('dragend', () => { if (draggedItem) { draggedItem.classList.remove('dragging'); draggedItem = null; } });
-        container.addEventListener('dragover', (e) => {
-            e.preventDefault(); if (!draggedItem) return;
-            const scrollContainer = container.closest('.scroll-wrapper');
-            if (scrollContainer) { const scrollRect = scrollContainer.getBoundingClientRect(); const threshold = 60; const scrollSpeed = 10; if (e.clientY < scrollRect.top + threshold) { scrollContainer.scrollTop -= scrollSpeed; } else if (e.clientY > scrollRect.bottom - threshold) { scrollContainer.scrollTop += scrollSpeed; } }
-            const afterElement = getDragAfterElement(container, e.clientY, `${selector}:not(.dragging)`);
-            if (afterElement == null) { container.appendChild(draggedItem); } else { container.insertBefore(draggedItem, afterElement); }
-        });
-        container.addEventListener('drop', (e) => { e.preventDefault(); if (!draggedItem) return; const newOrder = [...container.querySelectorAll(selector)].map(el => el.dataset.id || el.dataset.subId); onDropCallback(newOrder); });
-    }
-    function getDragAfterElement(container, y, selector) { const draggableElements = [...container.querySelectorAll(selector)]; return draggableElements.reduce((closest, child) => { const box = child.getBoundingClientRect(); const offset = y - box.top - box.height / 2; if (offset < 0 && offset > closest.offset) { return { offset: offset, element: child }; } else { return closest; } }, { offset: Number.NEGATIVE_INFINITY }).element; }
+  // --- EXPORT & IMPORT FUNCTIONS (UPDATED) ---
+  function exportImage(btn) {
+    if (!reportTitle) { alert('请输入报告文件名！'); return; }
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在生成...'; btn.disabled = true;
+    const currentSelectedId = selectedBlockId; selectBlockForEditing(null);
+    setTimeout(() => {
+      const canvasEl = document.getElementById('preview-canvas');
+      const options = { quality: 1.0, bgcolor: '#f0f2f5', filter: (node) => node.nodeType !== Node.ELEMENT_NODE || !node.classList.contains('preview-delete-btn'), width: canvasEl.scrollWidth * 2, height: canvasEl.scrollHeight * 2, style: { transform: 'scale(2)', transformOrigin: 'top left', width: canvasEl.scrollWidth + 'px', height: canvasEl.scrollHeight + 'px', margin: 0 } };
+      domtoimage.toPng(canvasEl, options)
+              .then((dataUrl) => { const link = document.createElement('a'); link.download = `${reportTitle}.png`; link.href = dataUrl; link.click(); })
+              .catch((error) => { console.error('导出失败:', error); alert('导出图片失败，请检查控制台。'); })
+              .finally(() => { btn.innerHTML = '<i class="fas fa-file-image"></i> 导出图片'; btn.disabled = false; selectBlockForEditing(currentSelectedId); });
+    }, 150);
+  }
+  function exportProject() {
+    const state = { reportTitle, blocks, coverImageUrl, coverImageMarginBottom, cardShadowIntensity, showFinalAttribution, finalCaption, finalSource, finalTextAlign };
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${reportTitle.replace(/\s+/g, '_') || 'report'}_project.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
 
-    // --- EXPORT & IMPORT FUNCTIONS (UPDATED) ---
-    function exportImage(btn) {
-        if (!reportTitle) { alert('请输入报告文件名！'); return; }
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在生成...'; btn.disabled = true;
-        const currentSelectedId = selectedBlockId; selectBlockForEditing(null);
-        setTimeout(() => {
-            const canvasEl = document.getElementById('preview-canvas');
-            const options = { quality: 1.0, bgcolor: '#f0f2f5', filter: (node) => node.nodeType !== Node.ELEMENT_NODE || !node.classList.contains('preview-delete-btn'), width: canvasEl.scrollWidth * 2, height: canvasEl.scrollHeight * 2, style: { transform: 'scale(2)', transformOrigin: 'top left', width: canvasEl.scrollWidth + 'px', height: canvasEl.scrollHeight + 'px', margin: 0 } };
-            domtoimage.toPng(canvasEl, options)
-                .then((dataUrl) => { const link = document.createElement('a'); link.download = `${reportTitle}.png`; link.href = dataUrl; link.click(); })
-                .catch((error) => { console.error('导出失败:', error); alert('导出图片失败，请检查控制台。'); })
-                .finally(() => { btn.innerHTML = '<i class="fas fa-file-image"></i> 导出图片'; btn.disabled = false; selectBlockForEditing(currentSelectedId); });
-        }, 150);
-    }
-    function exportProject() {
-        const state = { reportTitle, blocks, coverImageUrl, coverImageMarginBottom, cardShadowIntensity, showFinalAttribution, finalCaption, finalSource, finalTextAlign };
-        const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${reportTitle.replace(/\s+/g, '_') || 'report'}_project.json`;
-        link.click();
-        URL.revokeObjectURL(link.href);
-    }
+  // === NEW FUNCTION: Export AI Template ===
+  function exportTemplate() {
+    const templateData = generateAITemplate();
+    const blob = new Blob([JSON.stringify(templateData, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `AI_template_for_report.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
 
-    // === NEW FUNCTION: Export AI Template ===
-    function exportTemplate() {
-        const templateData = generateAITemplate();
-        const blob = new Blob([JSON.stringify(templateData, null, 2)], { type: 'application/json' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `AI_template_for_report.json`;
-        link.click();
-        URL.revokeObjectURL(link.href);
-    }
-
-    // === NEW FUNCTION: Generate AI Template Structure ===
-    function generateAITemplate() {
-        return {
-            template_schema_version: "1.0",
-            description: "这是汽车发布会分析报告的AI填充模板。请根据每个字段的'description'和'options'来填充内容。'content'字段可以是一个包含多段文字的数组，或单个字符串。简单的HTML标签如 <strong>, <br> 可以在字符串内使用。",
-            reportTitle: "【请填写报告主标题】",
-            coverImageUrl: "【请粘贴封面图片的URL，或留空】",
-            blocks: [
-                { type: "large", description: "大卡片：用于核心模块，可包含标题、多段文字和多张图片（最多4张）。", title: "【大卡片标题，例如：设计与工艺】", titleBarColor: { value: "blue", options: ["blue", "purple", "orange", null], description: "标题左侧装饰条颜色，null为无。" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"], description: "卡片背景色。" }, content: ["【请在此处填写第一段详细文字描述。】", "【可以有第二段，AI可以自行增删文字段落。】"], images: ["【图片1的URL】", "【图片2的URL】"] },
-                { type: "divider", description: "大标题/分隔符：用于分隔报告的不同章节。", content: "【章节标题，例如：核心技术】", align: { value: "center", options: ["left", "center", "right"] }, color: { value: "default", options: ["default", "black"] } },
-                { type: "small", description: "小卡片：用于并列的次要模块，无图片。", title: "【小卡片标题，例如：智能座舱】", titleBarColor: { value: "purple", options: ["blue", "purple", "orange", null] }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] }, content: ["【关于此模块的简要介绍。】"] },
-                { type: "small", description: "小卡片：可以并列放置多个。", title: "【另一个小卡片，例如：安全配置】", titleBarColor: { value: "orange", options: ["blue", "purple", "orange", null] }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] }, content: ["【关于此模块的简要介绍。】"] },
-                { type: "mediumtext", description: "中标题：纯文本卡片，用于强调短语或副标题。", content: "【引人注目的中等大小标题】", fontSize: { value: "medium", options: ["small", "medium", "large"] }, textColor: { value: "#1f2937", description: "可使用HEX颜色代码" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] } },
-                { type: "puretext", description: "小标题：纯文本卡片，尺寸较小。", content: "【补充说明性质的小标题】", fontSize: { value: "small", options: ["small", "medium", "large"] }, textColor: { value: "#374151", description: "可使用HEX颜色代码" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] } }
-            ]
-        };
-    }
-
-    // === NEW FUNCTION: Parse imported AI Template ===
-    function parseAITemplate(templateData) {
-        try {
-            const getValue = (field) => (field && typeof field === 'object' && field.value !== undefined) ? field.value : field;
-            reportTitle = getValue(templateData.reportTitle) || '未命名报告';
-            coverImageUrl = getValue(templateData.coverImageUrl) && !String(getValue(templateData.coverImageUrl)).startsWith("【") ? getValue(templateData.coverImageUrl) : null;
-            const newBlocks = [];
-            for(const block of templateData.blocks) {
-                const newBlock = { id: Date.now() + Math.random() };
-                newBlock.type = block.type;
-                switch(block.type) {
-                    case 'large': case 'small':
-                        newBlock.backgroundColor = getValue(block.backgroundColor) || 'default';
-                        newBlock.titleBarColor = getValue(block.titleBarColor);
-                        newBlock.subBlocks = [];
-                        if (block.title) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'title', content: getValue(block.title) }); }
-                        if (block.content && Array.isArray(block.content)) { const fullContent = block.content.map(p => `<p>${getValue(p)}</p>`).join(''); newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: fullContent }); }
-                        else if (block.content) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: `<p>${getValue(block.content)}</p>` }); }
-                        if (block.type === 'large' && block.images && Array.isArray(block.images)) { block.images.forEach(imgUrl => { if(getValue(imgUrl) && !String(getValue(imgUrl)).startsWith("【")) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: getValue(imgUrl) }); } }); }
-                        break;
-                    case 'divider':
-                        newBlock.content = getValue(block.content) || ''; newBlock.align = getValue(block.align) || 'center'; newBlock.color = getValue(block.color) || 'default';
-                        break;
-                    case 'mediumtext': case 'puretext':
-                        newBlock.content = getValue(block.content) || ''; newBlock.backgroundColor = getValue(block.backgroundColor) || 'default'; newBlock.textColor = getValue(block.textColor) || '#1f2937'; newBlock.fontSize = getValue(block.fontSize) || (block.type === 'mediumtext' ? 'medium' : 'small');
-                        break;
-                    default: continue;
-                }
-                newBlocks.push(newBlock);
-            }
-            blocks = newBlocks;
-            coverImageMarginBottom = 24; cardShadowIntensity = 100; showFinalAttribution = false; finalCaption = ''; finalSource = '长安科技/用户与市场/用户洞察与前瞻'; finalTextAlign = 'center';
-            selectedBlockId = null;
-            render();
-            alert('AI模板导入成功！');
-        } catch(error) { console.error('解析AI模板失败:', error); alert('解析AI模板失败，请检查文件格式是否正确。'); }
-    }
-
-    // === UPDATED Import Logic ===
-    document.getElementById('import-file-input').onchange = (event) => {
-        const file = event.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const state = JSON.parse(e.target.result);
-                if (state.template_schema_version) {
-                    parseAITemplate(state);
-                } else if (state.reportTitle && Array.isArray(state.blocks)) {
-                    reportTitle = state.reportTitle;
-                    blocks = migrateToSubBlockModel(state.blocks);
-                    coverImageUrl = state.coverImageUrl || null;
-                    coverImageMarginBottom = state.coverImageMarginBottom !== undefined ? state.coverImageMarginBottom : 24;
-                    cardShadowIntensity = state.cardShadowIntensity !== undefined ? state.cardShadowIntensity : 100;
-                    showFinalAttribution = state.showFinalAttribution || false;
-                    finalCaption = state.finalCaption || '';
-                    finalSource = state.finalSource || '长安科技/用户与市场/用户洞察与前瞻';
-                    finalTextAlign = state.finalTextAlign || 'center';
-                    selectedBlockId = null;
-                    render();
-                    alert('项目导入成功！');
-                } else { alert('无效的项目或模板文件格式。'); }
-            } catch (error) { console.error('导入失败:', error); alert('导入项目文件失败，请确认为有效的JSON文件。'); }
-        };
-        reader.readAsText(file);
-        event.target.value = '';
+  // === NEW FUNCTION: Generate AI Template Structure ===
+  function generateAITemplate() {
+    return {
+      template_schema_version: "1.0",
+      description: "这是汽车发布会分析报告的AI填充模板。请根据每个字段的'description'和'options'来填充内容。'content'字段可以是一个包含多段文字的数组，或单个字符串。简单的HTML标签如 <strong>, <br> 可以在字符串内使用。",
+      reportTitle: "【请填写报告主标题】",
+      coverImageUrl: "【请粘贴封面图片的URL，或留空】",
+      blocks: [
+        { type: "large", description: "大卡片：用于核心模块，可包含标题、多段文字和多张图片（最多4张）。", title: "【大卡片标题，例如：设计与工艺】", titleBarColor: { value: "blue", options: ["blue", "purple", "orange", null], description: "标题左侧装饰条颜色，null为无。" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"], description: "卡片背景色。" }, content: ["【请在此处填写第一段详细文字描述。】", "【可以有第二段，AI可以自行增删文字段落。】"], images: ["【图片1的URL】", "【图片2的URL】"] },
+        { type: "divider", description: "大标题/分隔符：用于分隔报告的不同章节。", content: "【章节标题，例如：核心技术】", align: { value: "center", options: ["left", "center", "right"] }, color: { value: "default", options: ["default", "black"] } },
+        { type: "small", description: "小卡片：用于并列的次要模块，无图片。", title: "【小卡片标题，例如：智能座舱】", titleBarColor: { value: "purple", options: ["blue", "purple", "orange", null] }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] }, content: ["【关于此模块的简要介绍。】"] },
+        { type: "small", description: "小卡片：可以并列放置多个。", title: "【另一个小卡片，例如：安全配置】", titleBarColor: { value: "orange", options: ["blue", "purple", "orange", null] }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] }, content: ["【关于此模块的简要介绍。】"] },
+        { type: "mediumtext", description: "中标题：纯文本卡片，用于强调短语或副标题。", content: "【引人注目的中等大小标题】", fontSize: { value: "medium", options: ["small", "medium", "large"] }, textColor: { value: "#1f2937", description: "可使用HEX颜色代码" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] } },
+        { type: "puretext", description: "小标题：纯文本卡片，尺寸较小。", content: "【补充说明性质的小标题】", fontSize: { value: "small", options: ["small", "medium", "large"] }, textColor: { value: "#374151", description: "可使用HEX颜色代码" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] } }
+      ]
     };
+  }
 
-    // --- CONTROLS ---
-    let hideAddDropdownTimeout;
-    function showAddDropdown() { clearTimeout(hideAddDropdownTimeout); document.querySelector('.add-block-dropdown-content').classList.add('show'); }
-    function hideAddDropdown(force = false) { const dropdown = document.querySelector('.add-block-dropdown-content'); if (force) { dropdown.classList.remove('show'); return; } hideAddDropdownTimeout = setTimeout(() => dropdown.classList.remove('show'), 200); }
-    function cancelHideAddDropdown() { clearTimeout(hideAddDropdownTimeout); }
-    window.onload = () => { blocks = migrateToSubBlockModel(initialBlocks); render(); setupDragAndDrop(); };
+  // === NEW FUNCTION: Parse imported AI Template ===
+  function parseAITemplate(templateData) {
+    try {
+      const getValue = (field) => (field && typeof field === 'object' && field.value !== undefined) ? field.value : field;
+      reportTitle = getValue(templateData.reportTitle) || '未命名报告';
+      coverImageUrl = getValue(templateData.coverImageUrl) && !String(getValue(templateData.coverImageUrl)).startsWith("【") ? getValue(templateData.coverImageUrl) : null;
+      const newBlocks = [];
+      for(const block of templateData.blocks) {
+        const newBlock = { id: Date.now() + Math.random() };
+        newBlock.type = block.type;
+        switch(block.type) {
+          case 'large': case 'small':
+            newBlock.backgroundColor = getValue(block.backgroundColor) || 'default';
+            newBlock.titleBarColor = getValue(block.titleBarColor);
+            newBlock.subBlocks = [];
+            if (block.title) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'title', content: getValue(block.title) }); }
+            if (block.content && Array.isArray(block.content)) { const fullContent = block.content.map(p => `<p>${getValue(p)}</p>`).join(''); newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: fullContent }); }
+            else if (block.content) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: `<p>${getValue(block.content)}</p>` }); }
+            if (block.type === 'large' && block.images && Array.isArray(block.images)) { block.images.forEach(imgUrl => { if(getValue(imgUrl) && !String(getValue(imgUrl)).startsWith("【")) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: getValue(imgUrl) }); } }); }
+            break;
+          case 'divider':
+            newBlock.content = getValue(block.content) || ''; newBlock.align = getValue(block.align) || 'center'; newBlock.color = getValue(block.color) || 'default';
+            break;
+          case 'mediumtext': case 'puretext':
+            newBlock.content = getValue(block.content) || ''; newBlock.backgroundColor = getValue(block.backgroundColor) || 'default'; newBlock.textColor = getValue(block.textColor) || '#1f2937'; newBlock.fontSize = getValue(block.fontSize) || (block.type === 'mediumtext' ? 'medium' : 'small');
+            break;
+          default: continue;
+        }
+        newBlocks.push(newBlock);
+      }
+      blocks = newBlocks;
+      coverImageMarginBottom = 24; cardShadowIntensity = 100; showFinalAttribution = false; finalCaption = ''; finalSource = '长安科技/用户与市场/用户洞察与前瞻'; finalTextAlign = 'center';
+      selectedBlockId = null;
+      render();
+      alert('AI模板导入成功！');
+    } catch(error) { console.error('解析AI模板失败:', error); alert('解析AI模板失败，请检查文件格式是否正确。'); }
+  }
+
+  // === UPDATED Import Logic ===
+  document.getElementById('import-file-input').onchange = (event) => {
+    const file = event.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const state = JSON.parse(e.target.result);
+        if (state.template_schema_version) {
+          parseAITemplate(state);
+        } else if (state.reportTitle && Array.isArray(state.blocks)) {
+          reportTitle = state.reportTitle;
+          blocks = migrateToSubBlockModel(state.blocks);
+          coverImageUrl = state.coverImageUrl || null;
+          coverImageMarginBottom = state.coverImageMarginBottom !== undefined ? state.coverImageMarginBottom : 24;
+          cardShadowIntensity = state.cardShadowIntensity !== undefined ? state.cardShadowIntensity : 100;
+          showFinalAttribution = state.showFinalAttribution || false;
+          finalCaption = state.finalCaption || '';
+          finalSource = state.finalSource || '长安科技/用户与市场/用户洞察与前瞻';
+          finalTextAlign = state.finalTextAlign || 'center';
+          selectedBlockId = null;
+          render();
+          alert('项目导入成功！');
+        } else { alert('无效的项目或模板文件格式。'); }
+      } catch (error) { console.error('导入失败:', error); alert('导入项目文件失败，请确认为有效的JSON文件。'); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  // --- CONTROLS ---
+  let hideAddDropdownTimeout;
+  function showAddDropdown() { clearTimeout(hideAddDropdownTimeout); document.querySelector('.add-block-dropdown-content').classList.add('show'); }
+  function hideAddDropdown(force = false) { const dropdown = document.querySelector('.add-block-dropdown-content'); if (force) { dropdown.classList.remove('show'); return; } hideAddDropdownTimeout = setTimeout(() => dropdown.classList.remove('show'), 200); }
+  function cancelHideAddDropdown() { clearTimeout(hideAddDropdownTimeout); }
+  window.onload = () => { blocks = migrateToSubBlockModel(initialBlocks); render(); setupDragAndDrop(); };
 </script>
 </body>
 </html>

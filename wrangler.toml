@@ -1,0 +1,6 @@
+name = "LongImageMake"
+compatibility_date = "2025-08-13"
+
+[site]
+bucket = "."  # 指定当前目录为静态资源目录
+entry-point = ""  # 明确表示没有 Worker 入口
