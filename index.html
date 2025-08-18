@@ -193,9 +193,6 @@
             font-weight: 500;
             white-space: nowrap;
         }
-        .reset-btn:hover {
-            text-decoration: underline;
-        }
 
     </style>
 </head>
@@ -234,6 +231,8 @@
 </div>
 <input type="file" id="import-file-input" accept=".json" style="display: none;">
 <input type="file" id="cover-image-input" accept="image/*" style="display: none;" onchange="updateCoverImage(event)">
+
+<input type="file" id="ai-image-input" accept="image/*" multiple style="display: none;" onchange="handleAIFill(this)">
 
 <div id="help-modal" class="help-modal-backdrop" style="display: none;">
     <div class="help-modal-content">
@@ -368,6 +367,9 @@
                 ${coverMarginHtml}
                 ${layoutSettingsHtml}${finalAttributionEditorHtml}<hr class="my-6">
                 <div class="grid grid-cols-1 gap-3">
+                    <button class="control-btn w-full justify-center" style="background-color: #8b5cf6;" onclick="triggerAIFill(this)">
+                        <i class="fas fa-magic"></i> AI 填充报告
+                    </button>
                     <button class="control-btn export-image-btn w-full justify-center" onclick="exportImage(this)"><i class="fas fa-file-image"></i> 导出图片</button>
                     <hr class="my-2 border-t border-gray-200">
                     <button class="control-btn import-btn w-full justify-center" onclick="document.getElementById('import-file-input').click()"><i class="fas fa-upload"></i> 加载</button>
@@ -783,9 +785,9 @@
                         newBlock.backgroundColor = getValue(block.backgroundColor) || 'default';
                         newBlock.titleBarColor = getValue(block.titleBarColor);
                         newBlock.subBlocks = [];
-                        if (block.title) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'title', content: getValue(block.title) }); }
+                        if (block.title && !String(getValue(block.title)).startsWith("【")) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'title', content: getValue(block.title) }); }
                         if (block.content && Array.isArray(block.content)) { const fullContent = block.content.map(p => `<p>${getValue(p)}</p>`).join(''); newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: fullContent }); }
-                        else if (block.content) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: `<p>${getValue(block.content)}</p>` }); }
+                        else if (block.content && !Array.isArray(block.content) && !String(getValue(block.content)).startsWith("【")) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: `<p>${getValue(block.content)}</p>` }); }
                         if (block.type === 'large' && block.images && Array.isArray(block.images)) { block.images.forEach(imgUrl => { if(getValue(imgUrl) && !String(getValue(imgUrl)).startsWith("【")) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: getValue(imgUrl) }); } }); }
                         break;
                     case 'divider':
@@ -834,6 +836,81 @@
         reader.readAsText(file);
         event.target.value = '';
     };
+
+    // --- ## 新增的 AI 功能相关函数 ## ---
+
+    // # 重要 #: 替换成你自己的 Worker URL
+    const WORKER_URL = 'https://long-image-ai-proxy.731526101.workers.dev';
+
+    // 1. 点击“AI填充”按钮时触发文件选择
+    function triggerAIFill(btn) {
+        document.getElementById('ai-image-input').click();
+    }
+
+    // 2. 将单个文件转换为 Base64 的辅助函数
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                // 我们只需要逗号后面的纯 Base64 部分
+                const base64String = reader.result.split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // 3. 用户选择图片后，处理 AI 填充的核心逻辑
+    async function handleAIFill(input) {
+        const files = input.files;
+        if (!files || files.length === 0) {
+            return;
+        }
+
+        const aiButton = document.querySelector('button[onclick="triggerAIFill(this)"]');
+        const originalButtonText = aiButton.innerHTML;
+        aiButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在请求AI分析...';
+        aiButton.disabled = true;
+
+        try {
+            // 将所有图片文件并行转换为 Base64
+            const base64Images = await Promise.all(
+                Array.from(files).map(file => fileToBase64(file))
+            );
+
+            // 发送请求到我们的 Cloudflare Worker
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ images: base64Images }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`AI 服务返回错误: ${errorData.error || response.statusText}`);
+            }
+
+            const aiTemplateData = await response.json();
+
+            // 调用您已有的函数来解析和渲染页面
+            // 注意：parseAITemplate 内部有 alert('AI模板导入成功！')，这里不再重复
+            parseAITemplate(aiTemplateData);
+
+        } catch (error) {
+            console.error('AI 填充失败:', error);
+            alert(`AI 填充失败: ${error.message}`);
+        } finally {
+            // 恢复按钮状态
+            aiButton.innerHTML = originalButtonText;
+            aiButton.disabled = false;
+            // 清空文件输入框，以便下次可以上传相同的文件
+            input.value = '';
+        }
+    }
+
 
     // --- HELP MODAL ---
     let isPanning = false;
