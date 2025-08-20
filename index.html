@@ -7,6 +7,8 @@
     <link rel="icon" href="logo.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image-more/2.9.5/dom-to-image-more.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -16,7 +18,7 @@
             overflow: hidden;
         }
         .main-container { display: grid; grid-template-columns: 55% 45%; height: 100vh; }
-        #editor-pane { background-color: #f9fafb; display: flex; flex-direction: column; height: 100vh; overflow-x: hidden; position: relative; }
+        #editor-pane { background-color: #f9fafb; display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative; }
         #editor-cards-container { overflow-y: auto; flex-grow: 1; padding: 20px; max-width: 700px; width: 100%; margin: 0 auto; }
         #editor-cards-container::-webkit-scrollbar, .scroll-wrapper::-webkit-scrollbar { width: 8px; }
         #editor-cards-container::-webkit-scrollbar-track, .scroll-wrapper::-webkit-scrollbar-track { background: transparent; }
@@ -58,11 +60,12 @@
         .divider-text-preview { font-size: 2.5rem; font-weight: 700; padding: 0 20px; color: #d1d5db; text-align: center; }
         .divider-text-preview.align-left { text-align: left; } .divider-text-preview.align-right { text-align: right; } .divider-text-preview.color-black { color: #1f2937; }
         .pure-text-preview-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 600; font-size: 1.5rem; }
-        .controls-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; background-color: #f9fafb; font-size: 1.25rem; font-weight: 600; color: #111827; }
+        .controls-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; background-color: #f9fafb; font-size: 1.25rem; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 1rem; }
         #report-title-input { font-size: 1.125rem; font-weight: 500; color: #111827; background-color: white; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; width: 100%; padding: 0.5rem 0.75rem; }
         .floating-controls { position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 1rem; z-index: 100; }
-        .control-btn { background-color: #3b82f6; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 9999px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 0.5rem; }
+        .control-btn { background-color: #3b82f6; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 9999px; font-weight: 500; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 14px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .control-btn:hover { background-color: #2563eb; }
+        .control-btn:disabled { background-color: #9ca3af; cursor: not-allowed; }
         .add-block-dropdown { position: relative; display: inline-block; }
         .add-block-dropdown-content { display: none; position: absolute; background-color: white; min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 10; border-radius: 0.75rem; bottom: calc(100% + 0.5rem); left: 50%; transform: translateX(-50%); overflow: hidden; padding: 0.5rem; }
         .add-block-dropdown-content.show { display: block; }
@@ -77,10 +80,9 @@
         .preview-delete-btn:hover { background-color: rgba(220, 38, 38, 1); }
         [draggable="true"]:hover .preview-delete-btn { opacity: 1; }
         .dragging { opacity: 0.5; border: 2px dashed #3b82f6; background-color: #eff6ff; }
-        #undo-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background-color: #2c3e50; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 1rem; z-index: 9999; transition: bottom 0.5s ease-in-out; cursor: pointer; }
+        #undo-toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background-color: #2c3e50; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.25); display: flex; align-items: center; gap: 1rem; z-index: 9999; transition: bottom 0.5s ease-in-out; }
         #undo-toast.show { bottom: 2rem; }
         #undo-toast button { background: none; border: none; color: #3b82f6; font-weight: bold; cursor: pointer; }
-        .import-btn { background-color: #4f46e5; } .import-btn:hover { background-color: #4338ca; }
         .export-image-btn { background-color: #16a34a; } .export-image-btn:hover { background-color: #15803d; }
         .color-swatch { width: 24px; height: 24px; border-radius: 99px; cursor: pointer; border: 2px solid transparent; }
         .color-swatch.active { border-color: #3b82f6; transform: scale(1.1); }
@@ -98,102 +100,79 @@
         .editor-image-preview { position: relative; flex-grow: 1; cursor: pointer; }
         .editor-image-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
         .editor-image-delete-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .preview-cover-image-container {
-            width: calc(100% + 3rem); margin-left: -1.5rem; margin-right: -1.5rem; margin-top: -1.5rem;
-            aspect-ratio: 1068 / 455; overflow: hidden; background-color: #f0f2f5;
-        }
+        .preview-cover-image-container { width: calc(100% + 3rem); margin-left: -1.5rem; margin-right: -1.5rem; margin-top: -1.5rem; aspect-ratio: 1068 / 455; overflow: hidden; background-color: #f0f2f5; }
         .preview-cover-image-container img { width: 100%; height: 100%; object-fit: cover; }
-        .cover-image-editor-preview {
-            position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 0.5rem; overflow: hidden;
-            cursor: pointer; background-color: #f3f4f6; display: flex; align-items: center; justify-content: center;
-        }
+        .cover-image-editor-preview { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 0.5rem; overflow: hidden; cursor: pointer; background-color: #f3f4f6; display: flex; align-items: center; justify-content: center; }
         .cover-image-editor-preview img { width: 100%; height: 100%; object-fit: contain; }
-        .final-attribution-block {
-            flex-basis: 100%;
-            font-size: 0.75rem; /* 12px */
-            color: #6b7280; /* gray-500 */
-            margin-top: 1rem;
-            padding: 0 0.5rem;
-        }
-        .final-attribution-block p {
-            margin: 0 0 0.25rem;
-            line-height: 1.5;
-        }
-        .final-attribution-source {
-            font-weight: 500;
-        }
-        .attribution-editor .content-editor {
-            min-height: auto;
-            font-size: 0.875rem;
-            line-height: 1.5;
-            padding: 0.5rem;
-        }
-        /* Help Modal Styles */
-        .help-modal-backdrop {
-            position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.6);
-            display: flex; align-items: center; justify-content: center;
-        }
-        .help-modal-content {
-            background-color: #fefefe; padding: 0; border-radius: 1rem;
-            width: 90%; max-width: 900px; height: 90vh;
-            display: flex; flex-direction: column; position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            overflow: hidden;
-        }
-        .help-modal-close {
-            color: white; background-color: rgba(0,0,0,0.5);
-            width: 32px; height: 32px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            position: absolute; top: 10px; right: 10px;
-            font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10;
-        }
+        .final-attribution-block { flex-basis: 100%; font-size: 0.75rem; color: #6b7280; margin-top: 1rem; padding: 0 0.5rem; }
+        .final-attribution-block p { margin: 0 0 0.25rem; line-height: 1.5; }
+        .final-attribution-source { font-weight: 500; }
+        .attribution-editor .content-editor { min-height: auto; font-size: 0.875rem; line-height: 1.5; padding: 0.5rem; }
+        .help-modal-backdrop { position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
+        .help-modal-content { background-color: #fefefe; padding: 0; border-radius: 1rem; width: 90%; max-width: 900px; height: 90vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
+        .help-modal-close { color: white; background-color: rgba(0,0,0,0.5); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: absolute; top: 10px; right: 10px; font-size: 20px; font-weight: bold; cursor: pointer; z-index: 10; }
         .help-modal-close:hover, .help-modal-close:focus { background-color: rgba(0,0,0,0.8); }
-        .help-image-container {
-            flex-grow: 1; overflow: auto; text-align: center; background-color: #e5e7eb;
-            height: 100%;
-        }
-        #help-image {
-            cursor: grab;
-        }
+        .help-image-container { flex-grow: 1; overflow: auto; text-align: center; background-color: #e5e7eb; height: 100%; }
+        #help-image { cursor: grab; }
         #help-image:active { cursor: grabbing; }
+        #floating-help-btn { position: absolute; bottom: 20px; right: 20px; width: 50px; height: 50px; background-color: #1e293b; color: white; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 4px 12px rgba(0,0,0,0.2); cursor: pointer; z-index: 1000; transition: all 0.2s ease-in-out; }
+        #floating-help-btn:hover { background-color: #334155; transform: scale(1.1); }
+        .reset-btn { background: none; border: none; color: #3b82f6; font-size: 0.75rem; cursor: pointer; margin-left: 12px; font-weight: 500; white-space: nowrap; }
 
-        /* Floating Help Button */
-        #floating-help-btn {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 50px;
-            height: 50px;
-            background-color: #1e293b;
-            color: white;
-            border-radius: 50%;
-            border: none;
+        /* --- Dropdown Styles for Buttons --- */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content { display: none; position: absolute; background-color: white; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1; border-radius: 0.5rem; overflow: hidden; }
+        .dropdown-content button { color: #374151; padding: 12px 16px; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; width: 100%; border: none; background: none; text-align: left; cursor: pointer; }
+        .dropdown-content button:hover { background-color: #f3f4f6; }
+        .dropdown:hover .dropdown-content { display: block; }
+
+        /* --- AI Chat Interface Styles --- */
+        #ai-chat-container {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            cursor: pointer;
-            z-index: 1000;
-            transition: all 0.2s ease-in-out;
+            flex-direction: column;
+            height: 100%;
+            background-color: #f9fafb;
+            background-image: url('https://your-domain.com/your-image.gif');
+            background-repeat: no-repeat;
+            background-position: right 40px bottom 100px;
+            background-size: 180px;
         }
-        #floating-help-btn:hover {
-            background-color: #334155;
-            transform: scale(1.1);
+        #ai-chat-messages { flex-grow: 1; overflow-y: auto; padding: 1rem; }
+        .ai-chat-bubble { max-width: 80%; width: fit-content; padding: 0.75rem 1rem; border-radius: 1rem; margin-bottom: 0.75rem; line-height: 1.6; }
+        .ai-chat-bubble.user { background-color: #dbeafe; color: #1e3a8a; margin-left: auto; border-bottom-right-radius: 0.25rem; }
+        .ai-chat-bubble.assistant { background-color: #e5e7eb; color: #1f2937; border-bottom-left-radius: 0.25rem; }
+        .ai-chat-bubble.error { background-color: #fee2e2; color: #991b1b; }
+        .ai-chat-bubble pre { background-color: #f3f4f6; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 0.875em; }
+        #ai-file-preview-container { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.5rem 1rem; border-top: 1px solid #e5e7eb; background: #f9fafb; }
+        .ai-file-preview-item { position: relative; }
+        .ai-file-preview-item img { width: 70px; height: 70px; object-fit: cover; border-radius: 0.5rem; }
+        .ai-file-preview-item .file-placeholder {
+            width: 70px; height: 70px; border-radius: 0.5rem; background-color: #e5e7eb;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 10px; color: #4b5568; text-align: center; padding: 4px;
+            box-sizing: border-box;
         }
-        /* Reset Button */
-        .reset-btn {
-            background: none;
-            border: none;
-            color: #3b82f6;
-            font-size: 0.75rem;
-            cursor: pointer;
-            margin-left: 12px;
-            font-weight: 500;
-            white-space: nowrap;
+        .ai-file-preview-item .file-placeholder i { font-size: 24px; margin-bottom: 4px; color: #3b82f6;}
+        .ai-file-preview-item .file-placeholder span {
+            width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-
+        .ai-file-preview-delete { position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+        #ai-chat-composer { display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border-top: 1px solid #e5e7eb; background-color: #f9fafb; }
+        #ai-chat-input {
+            flex-grow: 1;
+            border: 1px solid #d1d5db;
+            border-radius: 20px;
+            padding: 0.6rem 1rem;
+            outline: none;
+            resize: none;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .ai-chat-btn { background: none; border: none; font-size: 1.25rem; color: #4b5568; cursor: pointer; }
+        .ocr-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 0.5rem; text-align: center; font-size: 0.75rem; pointer-events: none; }
+        .ocr-overlay .fas { font-size: 1.25rem; margin-bottom: 4px; }
+        .reapply-btn { background-color: #16a34a !important; margin-left: 0.5rem; }
+        .reapply-btn:hover { background-color: #15803d !important; }
     </style>
 </head>
 <body>
@@ -218,21 +197,22 @@
     </div>
     <div id="editor-pane">
         <div class="controls-header">
+            <button id="editor-back-btn" class="ai-chat-btn hidden" onclick="switchToGlobalView()"><i class="fas fa-arrow-left"></i></button>
             <span id="editor-header-title">全局设置</span>
         </div>
         <div id="editor-cards-container"></div>
-        <button id="floating-help-btn" class="hidden" onclick="showHelpModal()" title="查看AI模板使用说明"><i class="fas fa-question"></i></button>
+        <button id="floating-help-btn" class="hidden" onclick="showHelpModal()" title="查看天枢大模型模板使用说明"><i class="fas fa-question"></i></button>
     </div>
 </div>
 
 <div id="undo-toast">
-    <span>已删除一个卡片。</span>
-    <button onclick="undoDelete(event)">撤销</button>
+    <span id="undo-toast-message">已删除一个卡片。</span>
+    <button id="undo-toast-btn" onclick="undoDelete(event)">撤销</button>
 </div>
+
 <input type="file" id="import-file-input" accept=".json" style="display: none;">
 <input type="file" id="cover-image-input" accept="image/*" style="display: none;" onchange="updateCoverImage(event)">
-
-<input type="file" id="ai-image-input" accept="image/*" multiple style="display: none;" onchange="handleAIFill(this)">
+<input type="file" id="ai-file-input" accept="image/*,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple style="display: none;" onchange="handleAIFileSelection(this)">
 
 <div id="help-modal" class="help-modal-backdrop" style="display: none;">
     <div class="help-modal-content">
@@ -250,6 +230,20 @@
     let coverImageMarginBottom = 24;
     let blocks = [];
     let selectedBlockId = null;
+    let editorView = 'global'; // 'global', 'card', or 'aiChat'
+
+    // --- Unique ID Generator ---
+    let nextBlockIdCounter = Date.now();
+    function generateUniqueId() {
+        return nextBlockIdCounter++;
+    }
+
+    // --- AI CHAT STATE ---
+    let aiFiles = [];
+    let aiChatHistory = [
+        { sender: 'assistant', content: '您好！我是天枢大模型。请上传图片或Word文档进行文字识别，并在下方输入框补充您的要求，我会为您生成报告。' }
+    ];
+
     // --- Global Settings Variables ---
     let cardShadowIntensity = 100;
     let showFinalAttribution = false;
@@ -263,6 +257,7 @@
     const cardBackgroundColors = { blue: '#eff6ff', purple: '#f5f3ff', orange: '#fff7ed', default: '#ffffff' };
     const fontSizes = { small: '1.5rem', medium: '2.0rem', large: '2.25rem' };
     let lastDeletedBlock = null;
+    let lastStateBeforeAIApply = null; // For AI apply undo
 
     const PLACEHOLDER_INITIAL = '在这里输入内容...';
     const PLACEHOLDER_NEW_SUB = '新增内容...';
@@ -275,13 +270,14 @@
 
     function migrateToSubBlockModel(oldBlocks) {
         return oldBlocks.map(block => {
+            if (!block.id) block.id = generateUniqueId(); // Ensure old blocks have IDs
             if ((block.type === 'large' || block.type === 'small') && !block.subBlocks) {
                 const subBlocks = [];
-                if (block.title != null) subBlocks.push({ id: Date.now() + Math.random(), type: 'title', content: block.title });
-                if (block.content != null) subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: block.content });
+                if (block.title != null) subBlocks.push({ id: generateUniqueId(), type: 'title', content: block.title });
+                if (block.content != null) subBlocks.push({ id: generateUniqueId(), type: 'content', content: block.content });
                 if (block.type === 'large') {
-                    if (block.imageUrl1) subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: block.imageUrl1 });
-                    if (block.imageUrl2) subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: block.imageUrl2 });
+                    if (block.imageUrl1) subBlocks.push({ id: generateUniqueId(), type: 'image', url: block.imageUrl1 });
+                    if (block.imageUrl2) subBlocks.push({ id: generateUniqueId(), type: 'image', url: block.imageUrl2 });
                 }
                 block.subBlocks = subBlocks;
                 delete block.title;
@@ -300,13 +296,13 @@
     }
 
     let initialBlocks = [
-        { id: Date.now() + 1, type: 'large', backgroundColor: 'default', title: '设计与工艺', titleBarColor: 'blue', content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: 'https://placehold.co/400x250/8b5cf6/ffffff?text=车身', imageUrl2: 'https://placehold.co/400x250/f97316/ffffff?text=内饰' },
-        { id: Date.now() + 6, type: 'divider', content: '核心技术', align: 'center', color: 'default' },
-        { id: Date.now() + 2, type: 'large', backgroundColor: 'default', title: '性能参数', titleBarColor: null, content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: null, imageUrl2: null },
-        { id: Date.now() + 7, type: 'puretext', backgroundColor: 'default', content: '我们重新定义了驾驶的乐趣', textColor: '#1f2937', fontSize: 'small' },
-        { id: Date.now() + 3, type: 'small', backgroundColor: 'default', title: '智能座舱', titleBarColor: 'purple', content: `<p>${PLACEHOLDER_INITIAL}</p>` },
-        { id: Date.now() + 4, type: 'small', backgroundColor: 'default', title: '安全配置', titleBarColor: 'orange', content: `<p>${PLACEHOLDER_INITIAL}</p>` },
-        { id: Date.now() + 5, type: 'small', backgroundColor: 'default', title: '另一块小卡片', titleBarColor: null, content: `<p>${PLACEHOLDER_INITIAL}</p>`},
+        { type: 'large', backgroundColor: 'default', title: '设计与工艺', titleBarColor: 'blue', content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: 'https://placehold.co/400x250/8b5cf6/ffffff?text=车身', imageUrl2: 'https://placehold.co/400x250/f97316/ffffff?text=内饰' },
+        { type: 'divider', content: '核心技术', align: 'center', color: 'default' },
+        { type: 'large', backgroundColor: 'default', title: '性能参数', titleBarColor: null, content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: null, imageUrl2: null },
+        { type: 'puretext', backgroundColor: 'default', content: '我们重新定义了驾驶的乐趣', textColor: '#1f2937', fontSize: 'small' },
+        { type: 'small', backgroundColor: 'default', title: '智能座舱', titleBarColor: 'purple', content: `<p>${PLACEHOLDER_INITIAL}</p>` },
+        { type: 'small', backgroundColor: 'default', title: '安全配置', titleBarColor: 'orange', content: `<p>${PLACEHOLDER_INITIAL}</p>` },
+        { type: 'small', backgroundColor: 'default', title: '另一块小卡片', titleBarColor: null, content: `<p>${PLACEHOLDER_INITIAL}</p>`},
     ];
 
     function render() {
@@ -314,116 +310,140 @@
         renderPreview();
     }
 
+    // --- Editor View Router ---
     function renderEditor() {
         const container = document.getElementById('editor-cards-container');
         const headerTitle = document.getElementById('editor-header-title');
         const helpBtn = document.getElementById('floating-help-btn');
+        const backBtn = document.getElementById('editor-back-btn');
 
         container.innerHTML = '';
         document.body.onclick = null;
+        backBtn.classList.add('hidden');
 
-        if (!selectedBlockId) {
-            // --- 当前为全局设置视图 ---
-            headerTitle.textContent = '全局设置';
-            helpBtn.style.display = 'flex'; // 直接控制样式来显示按钮
+        switch(editorView) {
+            case 'global':
+                headerTitle.textContent = '全局设置';
+                helpBtn.style.display = 'flex';
+                renderGlobalSettings(container);
+                break;
+            case 'card':
+                const block = blocks.find(b => b.id === selectedBlockId);
+                if (!block) {
+                    switchToGlobalView();
+                    return;
+                }
+                headerTitle.textContent = `编辑: ${blockTypeNames[block.type]}`;
+                helpBtn.style.display = 'none';
+                backBtn.classList.remove('hidden');
+                renderCardEditor(container, block);
+                break;
+            case 'aiChat':
+                headerTitle.textContent = '天枢大模型 填充助手';
+                helpBtn.style.display = 'none';
+                backBtn.classList.remove('hidden');
+                renderAIChatView(container);
+                break;
+        }
+    }
 
-            let coverImageEditorHtml = '';
-            if (coverImageUrl) {
-                coverImageEditorHtml = `<div class="cover-image-editor-preview" onclick="document.getElementById('cover-image-input').click()" title="点击替换封面"><img src="${coverImageUrl}"><button class="editor-image-delete-btn" onclick="event.stopPropagation(); deleteCoverImage()" title="删除封面"><i class="fas fa-times"></i></button></div>`;
-            } else {
-                coverImageEditorHtml = `<button class="custom-file-button h-32" onclick="document.getElementById('cover-image-input').click()"><i class="fas fa-image text-3xl mb-2"></i><span>上传报告封面</span></button>`;
-            }
+    function renderGlobalSettings(container) {
+        let coverImageEditorHtml = '';
+        if (coverImageUrl) {
+            coverImageEditorHtml = `<div class="cover-image-editor-preview" onclick="document.getElementById('cover-image-input').click()" title="点击替换封面"><img src="${coverImageUrl}"><button class="editor-image-delete-btn" onclick="event.stopPropagation(); deleteCoverImage()" title="删除封面"><i class="fas fa-times"></i></button></div>`;
+        } else {
+            coverImageEditorHtml = `<button class="custom-file-button h-32" onclick="document.getElementById('cover-image-input').click()"><i class="fas fa-image text-3xl mb-2"></i><span>上传报告封面</span></button>`;
+        }
 
-            let coverMarginHtml = '';
-            if (coverImageUrl) {
-                coverMarginHtml = `<div class="mb-4">
-            <label for="cover-margin-slider" class="text-sm font-medium text-gray-700 mb-2 block flex justify-between">
-                <span>封面下边距</span><span id="cover-margin-slider-label">${coverImageMarginBottom}px</span>
-            </label>
-            <div class="flex items-center">
-                <input type="range" id="cover-margin-slider" min="0" max="100" value="${coverImageMarginBottom}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateCoverMargin(this.value)">
-                <button class="reset-btn" onclick="resetCoverMargin()">恢复默认</button>
+        let coverMarginHtml = '';
+        if (coverImageUrl) {
+            coverMarginHtml = `<div class="mb-4">
+                <label for="cover-margin-slider" class="text-sm font-medium text-gray-700 mb-2 block flex justify-between">
+                    <span>封面下边距</span><span id="cover-margin-slider-label">${coverImageMarginBottom}px</span>
+                </label>
+                <div class="flex items-center">
+                    <input type="range" id="cover-margin-slider" min="0" max="100" value="${coverImageMarginBottom}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateCoverMargin(this.value)">
+                    <button class="reset-btn" onclick="resetCoverMargin()">恢复默认</button>
+                </div>
+            </div>`;
+        }
+
+        const layoutSettingsHtml = `<div class="mt-4 pt-4 border-t space-y-4">
+            <div>
+                <label for="card-shadow-slider" class="text-sm font-medium text-gray-700 mb-2 block flex justify-between">
+                    <span>卡片阴影强度</span><span id="card-shadow-label">${cardShadowIntensity}%</span>
+                </label>
+                <div class="flex items-center">
+                    <input type="range" id="card-shadow-slider" min="0" max="100" value="${cardShadowIntensity}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateCardShadow(this.value)">
+                    <button class="reset-btn" onclick="resetCardShadow()">恢复默认</button>
+                </div>
             </div>
         </div>`;
-            }
 
-            const layoutSettingsHtml = `<div class="mt-4 pt-4 border-t space-y-4">
-                <div>
-                    <label for="card-shadow-slider" class="text-sm font-medium text-gray-700 mb-2 block flex justify-between">
-                        <span>卡片阴影强度</span><span id="card-shadow-label">${cardShadowIntensity}%</span>
-                    </label>
-                    <div class="flex items-center">
-                        <input type="range" id="card-shadow-slider" min="0" max="100" value="${cardShadowIntensity}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" oninput="updateCardShadow(this.value)">
-                        <button class="reset-btn" onclick="resetCardShadow()">恢复默认</button>
+        const finalAttributionEditorHtml = `<div class="attribution-editor mt-4 pt-4 border-t"><div class="flex items-center justify-between mb-2"><label for="show-final-attribution" class="text-sm font-medium text-gray-700 cursor-pointer">显示报告末尾注释</label><input type="checkbox" id="show-final-attribution" onchange="updateFinalAttribution('showFinalAttribution', this.checked, true)" ${showFinalAttribution ? 'checked' : ''}></div><div class="${showFinalAttribution ? '' : 'hidden'}"><div class="mb-2"><label class="text-xs font-medium text-gray-500 block mb-1">注释</label><div class="content-editor" contenteditable="true" data-placeholder="输入注释..." onpaste="handlePaste(event)" oninput="updateFinalAttribution('finalCaption', this.innerText)">${finalCaption}</div></div><div class="mb-2"><label class="text-xs font-medium text-gray-500 block mb-1">来源</label><div class="content-editor" contenteditable="true" data-placeholder="输入来源..." onpaste="handlePaste(event)" oninput="updateFinalAttribution('finalSource', this.innerText)">${finalSource}</div></div><div><label class="text-xs font-medium text-gray-500 block mb-1">对齐</label><div class="flex items-center gap-2"><button class="style-btn ${finalTextAlign === 'left' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'left', true)"><i class="fas fa-align-left"></i></button><button class="style-btn ${finalTextAlign === 'center' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'center', true)"><i class="fas fa-align-center"></i></button><button class="style-btn ${finalTextAlign === 'right' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'right', true)"><i class="fas fa-align-right"></i></button></div></div></div></div>`;
+
+        const actionButtonsHtml = `
+            <div class="grid grid-cols-2 gap-3">
+                <button class="control-btn col-span-2 justify-center" style="background-color: #8b5cf6;" onclick="switchToAIChatView()">
+                    <i class="fas fa-magic"></i> 天枢大模型 填充报告
+                </button>
+                <button class="control-btn export-image-btn justify-center" onclick="exportImage(this)"><i class="fas fa-file-image"></i> 导出图片</button>
+
+                <div class="dropdown">
+                    <button class="control-btn w-full justify-center" style="background-color: #6b7280;"><i class="fas fa-cog"></i> 文件操作</button>
+                    <div class="dropdown-content">
+                        <button onclick="document.getElementById('import-file-input').click()"><i class="fas fa-upload"></i> 加载项目</button>
+                        <button onclick="exportProject()"><i class="fas fa-save"></i> 保存项目</button>
+                        <button onclick="exportTemplate()"><i class="fas fa-file-alt"></i> 导出模板</button>
                     </div>
                 </div>
             </div>`;
 
-            const finalAttributionEditorHtml = `<div class="attribution-editor mt-4 pt-4 border-t"><div class="flex items-center justify-between mb-2"><label for="show-final-attribution" class="text-sm font-medium text-gray-700 cursor-pointer">显示报告末尾注释</label><input type="checkbox" id="show-final-attribution" onchange="updateFinalAttribution('showFinalAttribution', this.checked, true)" ${showFinalAttribution ? 'checked' : ''}></div><div class="${showFinalAttribution ? '' : 'hidden'}"><div class="mb-2"><label class="text-xs font-medium text-gray-500 block mb-1">注释</label><div class="content-editor" contenteditable="true" data-placeholder="输入注释..." onpaste="handlePaste(event)" oninput="updateFinalAttribution('finalCaption', this.innerText)">${finalCaption}</div></div><div class="mb-2"><label class="text-xs font-medium text-gray-500 block mb-1">来源</label><div class="content-editor" contenteditable="true" data-placeholder="输入来源..." onpaste="handlePaste(event)" oninput="updateFinalAttribution('finalSource', this.innerText)">${finalSource}</div></div><div><label class="text-xs font-medium text-gray-500 block mb-1">对齐</label><div class="flex items-center gap-2"><button class="style-btn ${finalTextAlign === 'left' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'left', true)"><i class="fas fa-align-left"></i></button><button class="style-btn ${finalTextAlign === 'center' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'center', true)"><i class="fas fa-align-center"></i></button><button class="style-btn ${finalTextAlign === 'right' ? 'active' : ''}" onclick="updateFinalAttribution('finalTextAlign', 'right', true)"><i class="fas fa-align-right"></i></button></div></div></div></div>`;
+        container.innerHTML = `<div class="global-settings-card">
+            <div class="mb-4"><label class="text-sm font-medium text-gray-700 mb-2 block">报告文件名</label><input type="text" id="report-title-input" value="${reportTitle}" oninput="reportTitle = this.value"></div>
+            <div class="mb-4"><label class="text-sm font-medium text-gray-700 mb-2 block">报告封面</label>${coverImageEditorHtml}</div>
+            ${coverMarginHtml}
+            ${layoutSettingsHtml}${finalAttributionEditorHtml}<hr class="my-6">
+            ${actionButtonsHtml}
+        </div>`;
+    }
 
-            container.innerHTML = `<div class="global-settings-card">
-                <div class="mb-4"><label class="text-sm font-medium text-gray-700 mb-2 block">报告文件名</label><input type="text" id="report-title-input" value="${reportTitle}" oninput="reportTitle = this.value"></div>
-                <div class="mb-4"><label class="text-sm font-medium text-gray-700 mb-2 block">报告封面</label>${coverImageEditorHtml}</div>
-                ${coverMarginHtml}
-                ${layoutSettingsHtml}${finalAttributionEditorHtml}<hr class="my-6">
-                <div class="grid grid-cols-1 gap-3">
-                    <button class="control-btn w-full justify-center" style="background-color: #8b5cf6;" onclick="triggerAIFill(this)">
-                        <i class="fas fa-magic"></i> AI 填充报告
-                    </button>
-                    <button class="control-btn export-image-btn w-full justify-center" onclick="exportImage(this)"><i class="fas fa-file-image"></i> 导出图片</button>
-                    <hr class="my-2 border-t border-gray-200">
-                    <button class="control-btn import-btn w-full justify-center" onclick="document.getElementById('import-file-input').click()"><i class="fas fa-upload"></i> 加载</button>
-                    <button class="control-btn w-full justify-center" onclick="exportProject()"><i class="fas fa-save"></i> 保存</button>
-                    <button class="control-btn w-full justify-center" style="background-color: #0d9488;" onclick="exportTemplate()"><i class="fas fa-file-alt"></i> 导出AI模板</button>
-                </div></div>`;
+    function renderCardEditor(container, block) {
+        const card = document.createElement('div');
+        card.className = 'editor-card';
+        const getCompatibleTypes = () => compatibleTypesMatrix['title-blocks'].includes(block.type) ? compatibleTypesMatrix['title-blocks'] : compatibleTypesMatrix['no-title-blocks'];
+        let typeSwitcherHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">卡片类型</label><div class="custom-select-container"><div class="custom-select-trigger" onclick="toggleCustomSelect(event)"><span>${blockTypeNames[block.type]}</span><i class="fas fa-chevron-down text-xs"></i></div><div class="custom-select-options">${getCompatibleTypes().map(type => `<div class="custom-select-option" onclick="switchBlockType(${block.id}, '${type}')">${blockTypeNames[type]}</div>`).join('')}</div></div></div>`;
+        document.body.onclick = (e) => { if (!e.target.closest('.custom-select-container')) { document.querySelectorAll('.custom-select-options').forEach(el => el.classList.remove('show')); } };
 
-        } else {
-            // --- 当前为卡片编辑视图 ---
-            helpBtn.style.display = 'none'; // 直接控制样式来隐藏按钮
+        let cardContent = '';
+        const backgroundSwatchesHtml = Object.entries(cardBackgroundColors).filter(([name]) => name !== 'default').map(([name, color]) => `<button class="color-swatch ${block.backgroundColor === name ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'backgroundColor', '${name}')" title="${name}"></button>`).join('');
+        const backgroundEditorHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">背景色</label><div class="flex items-center gap-2">${backgroundSwatchesHtml}<button class="w-6 h-6 rounded-full bg-white border border-gray-300 flex items-center justify-center ml-2" onclick="updateBlockStyle(${block.id}, 'backgroundColor', 'default')" title="默认白色"><i class="fas fa-times text-xs text-gray-600"></i></button></div></div>`;
 
-            const block = blocks.find(b => b.id === selectedBlockId);
-            if (!block) {
-                selectBlockForEditing(null);
-                return;
-            }
-
-            headerTitle.textContent = `编辑: ${blockTypeNames[block.type]}`;
-            const card = document.createElement('div');
-            card.className = 'editor-card';
-            const getCompatibleTypes = () => compatibleTypesMatrix['title-blocks'].includes(block.type) ? compatibleTypesMatrix['title-blocks'] : compatibleTypesMatrix['no-title-blocks'];
-            let typeSwitcherHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">卡片类型</label><div class="custom-select-container"><div class="custom-select-trigger" onclick="toggleCustomSelect(event)"><span>${blockTypeNames[block.type]}</span><i class="fas fa-chevron-down text-xs"></i></div><div class="custom-select-options">${getCompatibleTypes().map(type => `<div class="custom-select-option" onclick="switchBlockType(${block.id}, '${type}')">${blockTypeNames[type]}</div>`).join('')}</div></div></div>`;
-            document.body.onclick = (e) => { if (!e.target.closest('.custom-select-container')) { document.querySelectorAll('.custom-select-options').forEach(el => el.classList.remove('show')); } };
-
-            let cardContent = '';
-            const backgroundSwatchesHtml = Object.entries(cardBackgroundColors).filter(([name]) => name !== 'default').map(([name, color]) => `<button class="color-swatch ${block.backgroundColor === name ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'backgroundColor', '${name}')" title="${name}"></button>`).join('');
-            const backgroundEditorHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">背景色</label><div class="flex items-center gap-2">${backgroundSwatchesHtml}<button class="w-6 h-6 rounded-full bg-white border border-gray-300 flex items-center justify-center ml-2" onclick="updateBlockStyle(${block.id}, 'backgroundColor', 'default')" title="默认白色"><i class="fas fa-times text-xs text-gray-600"></i></button></div></div>`;
-
-            switch (block.type) {
-                case 'large': case 'small':
-                    cardContent = typeSwitcherHtml;
-                    const titleBarSwatches = Object.entries(titleBarColors).map(([name, color]) => `<button class="color-swatch ${block.titleBarColor === name ? 'active' : ''}" style="background-color: ${color};" onclick="setTitleBarColor(${block.id}, '${name}')" title="${name}"></button>`).join('');
-                    cardContent += `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题装饰条</label><div class="flex items-center gap-2">${titleBarSwatches}<button class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center ml-2" onclick="setTitleBarColor(${block.id}, null)" title="无"><i class="fas fa-times text-xs text-gray-600"></i></button></div></div>${backgroundEditorHtml}<hr class="my-4">`;
-                    const titleSubBlock = block.subBlocks.find(sb => sb.type === 'title');
-                    if (titleSubBlock) { cardContent += `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateSubBlock(${block.id}, ${titleSubBlock.id}, 'content', this.innerHTML)">${titleSubBlock.content}</div></div>`; }
-                    const subBlocksContainerId = `sub-blocks-container-${block.id}`;
-                    const imageSubBlocksCount = block.subBlocks.filter(sb => sb.type === 'image').length;
-                    const editorLayoutClass = imageSubBlocksCount === 4 ? 'editor-layout-2x2' : '';
-                    cardContent += `<div id="${subBlocksContainerId}" class="sub-blocks-list ${editorLayoutClass}">${renderSubBlocksEditor(block)}</div>`;
-                    cardContent += `<div class="mt-4 pt-4 border-t flex gap-2"><button class="control-btn text-sm py-2 px-3 flex-1 justify-center" onclick="addSubBlock(${block.id}, 'content')"><i class="fas fa-plus"></i> 新增内容</button><button class="control-btn text-sm py-2 px-3 flex-1 justify-center" onclick="addSubBlock(${block.id}, 'image')"><i class="fas fa-image"></i> 新增图片</button></div>`;
-                    setTimeout(() => setupSubBlockDragAndDrop(document.getElementById(subBlocksContainerId), block.id), 0);
-                    break;
-                case 'divider':
-                    cardContent = `${typeSwitcherHtml}<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4 flex items-center gap-4"><div class="flex items-center gap-2"><button class="style-btn ${block.align === 'left' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'left')" title="左对齐"><i class="fas fa-align-left"></i></button><button class="style-btn ${block.align === 'center' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'center')" title="居中"><i class="fas fa-align-center"></i></button><button class="style-btn ${block.align === 'right' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'right')" title="右对齐"><i class="fas fa-align-right"></i></button></div><div class="flex items-center gap-2"><button class="style-btn ${block.color === 'default' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'default')" title="默认色"><span class="w-4 h-4 rounded-full bg-gray-300 block"></span></button><button class="style-btn ${block.color === 'black' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'black')" title="黑色"><span class="w-4 h-4 rounded-full bg-gray-800 block"></span></button></div></div>`;
-                    break;
-                case 'puretext': case 'mediumtext':
-                    const colorSwatches = Object.entries(titleTextColors).map(([name, color]) => `<button class="color-swatch ${block.textColor === color ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'textColor', '${color}')" title="${name}"></button>`).join('');
-                    const fontSizeButtons = Object.keys(fontSizes).map(size => `<button class="style-btn ${block.fontSize === size ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'fontSize', '${size}')">${{small:'小', medium:'中', large:'大'}[size]}</button>`).join('');
-                    cardContent = `${typeSwitcherHtml}${backgroundEditorHtml}<hr class="my-4"><div><div id="editor-${block.id}" class="content-editor centered-editor bold-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4"><label class="text-sm font-medium text-gray-500 mb-2 block">文字样式</label><div class="flex items-center gap-x-6"><div class="flex items-center gap-2"><label class="text-sm text-gray-700">字号:</label>${fontSizeButtons}</div><div class="flex items-center gap-2"><label class="text-sm text-gray-700">颜色:</label>${colorSwatches}</div></div></div>`;
-                    break;
-            }
-            card.innerHTML = cardContent;
-            container.appendChild(card);
+        switch (block.type) {
+            case 'large': case 'small':
+                cardContent = typeSwitcherHtml;
+                const titleBarSwatches = Object.entries(titleBarColors).map(([name, color]) => `<button class="color-swatch ${block.titleBarColor === name ? 'active' : ''}" style="background-color: ${color};" onclick="setTitleBarColor(${block.id}, '${name}')" title="${name}"></button>`).join('');
+                cardContent += `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题装饰条</label><div class="flex items-center gap-2">${titleBarSwatches}<button class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center ml-2" onclick="setTitleBarColor(${block.id}, null)" title="无"><i class="fas fa-times text-xs text-gray-600"></i></button></div></div>${backgroundEditorHtml}<hr class="my-4">`;
+                const titleSubBlock = block.subBlocks.find(sb => sb.type === 'title');
+                if (titleSubBlock) { cardContent += `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateSubBlock(${block.id}, ${titleSubBlock.id}, 'content', this.innerHTML)">${titleSubBlock.content}</div></div>`; }
+                const subBlocksContainerId = `sub-blocks-container-${block.id}`;
+                const imageSubBlocksCount = block.subBlocks.filter(sb => sb.type === 'image').length;
+                const editorLayoutClass = imageSubBlocksCount === 4 ? 'editor-layout-2x2' : '';
+                cardContent += `<div id="${subBlocksContainerId}" class="sub-blocks-list ${editorLayoutClass}">${renderSubBlocksEditor(block)}</div>`;
+                cardContent += `<div class="mt-4 pt-4 border-t flex gap-2"><button class="control-btn text-sm py-2 px-3 flex-1 justify-center" onclick="addSubBlock(${block.id}, 'content')"><i class="fas fa-plus"></i> 新增内容</button><button class="control-btn text-sm py-2 px-3 flex-1 justify-center" onclick="addSubBlock(${block.id}, 'image')"><i class="fas fa-image"></i> 新增图片</button></div>`;
+                setTimeout(() => setupSubBlockDragAndDrop(document.getElementById(subBlocksContainerId), block.id), 0);
+                break;
+            case 'divider':
+                cardContent = `${typeSwitcherHtml}<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4 flex items-center gap-4"><div class="flex items-center gap-2"><button class="style-btn ${block.align === 'left' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'left')" title="左对齐"><i class="fas fa-align-left"></i></button><button class="style-btn ${block.align === 'center' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'center')" title="居中"><i class="fas fa-align-center"></i></button><button class="style-btn ${block.align === 'right' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'right')" title="右对齐"><i class="fas fa-align-right"></i></button></div><div class="flex items-center gap-2"><button class="style-btn ${block.color === 'default' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'default')" title="默认色"><span class="w-4 h-4 rounded-full bg-gray-300 block"></span></button><button class="style-btn ${block.color === 'black' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'black')" title="黑色"><span class="w-4 h-4 rounded-full bg-gray-800 block"></span></button></div></div>`;
+                break;
+            case 'puretext': case 'mediumtext':
+                const colorSwatches = Object.entries(titleTextColors).map(([name, color]) => `<button class="color-swatch ${block.textColor === color ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'textColor', '${color}')" title="${name}"></button>`).join('');
+                const fontSizeButtons = Object.keys(fontSizes).map(size => `<button class="style-btn ${block.fontSize === size ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'fontSize', '${size}')">${{small:'小', medium:'中', large:'大'}[size]}</button>`).join('');
+                cardContent = `${typeSwitcherHtml}${backgroundEditorHtml}<hr class="my-4"><div><div id="editor-${block.id}" class="content-editor centered-editor bold-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4"><label class="text-sm font-medium text-gray-500 mb-2 block">文字样式</label><div class="flex items-center gap-x-6"><div class="flex items-center gap-2"><label class="text-sm text-gray-700">字号:</label>${fontSizeButtons}</div><div class="flex items-center gap-2"><label class="text-sm text-gray-700">颜色:</label>${colorSwatches}</div></div></div>`;
+                break;
         }
+        card.innerHTML = cardContent;
+        container.appendChild(card);
     }
 
     function renderSubBlocksEditor(block) {
@@ -559,6 +579,24 @@
         return html;
     }
 
+    // --- State & View Management ---
+    function selectBlockForEditing(id) {
+        selectedBlockId = id;
+        editorView = id ? 'card' : 'global';
+        render();
+    }
+
+    function switchToGlobalView() {
+        selectBlockForEditing(null);
+    }
+
+    function switchToAIChatView() {
+        selectedBlockId = null;
+        editorView = 'aiChat';
+        aiFiles = [];
+        render();
+    }
+
     function toggleCustomSelect(event) { event.stopPropagation(); const container = event.currentTarget.closest('.custom-select-container'); const options = container.querySelector('.custom-select-options'); options.classList.toggle('show'); }
     function updateCoverMargin(value) {
         coverImageMarginBottom = parseInt(value, 10);
@@ -590,18 +628,19 @@
         if(stateMap[key]) stateMap[key](value);
         if (fullRender) { render(); } else { renderPreview(); }
     }
+
     function addBlock(type) {
-        const newBlock = { id: Date.now(), type: type, backgroundColor: 'default' };
+        const newBlock = { id: generateUniqueId(), type: type, backgroundColor: 'default' };
         if (type === 'divider') { newBlock.content = '大标题文本'; newBlock.align = 'center'; newBlock.color = 'default'; delete newBlock.backgroundColor; }
         else if (type === 'puretext') { newBlock.content = '输入小标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'small'; }
         else if (type === 'mediumtext'){ newBlock.content = '输入中标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'medium'; }
         else if (type === 'large' || type === 'small') {
             newBlock.titleBarColor = null;
             newBlock.subBlocks = [
-                { id: Date.now() + 1, type: 'title', content: '新卡片标题' },
-                { id: Date.now() + 2, type: 'content', content: `<p>${PLACEHOLDER_INITIAL}</p>` }
+                { id: generateUniqueId(), type: 'title', content: '新卡片标题' },
+                { id: generateUniqueId(), type: 'content', content: `<p>${PLACEHOLDER_INITIAL}</p>` }
             ];
-            if (type === 'large') { newBlock.subBlocks.push({ id: Date.now() + 3, type: 'image', url: null }); }
+            if (type === 'large') { newBlock.subBlocks.push({ id: generateUniqueId(), type: 'image', url: null }); }
         }
         if (selectedBlockId) { const selectedIndex = blocks.findIndex(b => b.id === selectedBlockId); if (selectedIndex > -1) { blocks.splice(selectedIndex + 1, 0, newBlock); } else { blocks.push(newBlock); } } else { blocks.push(newBlock); }
         selectBlockForEditing(newBlock.id);
@@ -610,7 +649,7 @@
     function addSubBlock(blockId, type) {
         const block = blocks.find(b => b.id === blockId);
         if (block && block.subBlocks) {
-            const newSubBlock = { id: Date.now() + Math.random(), type: type };
+            const newSubBlock = { id: generateUniqueId(), type: type };
             if (type === 'content') newSubBlock.content = `<p>${PLACEHOLDER_NEW_SUB}</p>`;
             if (type === 'image') newSubBlock.url = null;
             block.subBlocks.push(newSubBlock);
@@ -620,13 +659,34 @@
     function deleteSubBlock(blockId, subBlockId) { const block = blocks.find(b => b.id === blockId); if(block && block.subBlocks) { block.subBlocks = block.subBlocks.filter(sb => sb.id !== subBlockId); render(); } }
     function deleteBlock(id) {
         const blockIndex = blocks.findIndex(b => b.id === id);
-        if (blockIndex > -1) { lastDeletedBlock = { block: JSON.parse(JSON.stringify(blocks[blockIndex])), index: blockIndex }; blocks.splice(blockIndex, 1); showUndoToast(); }
+        if (blockIndex > -1) {
+            lastDeletedBlock = { block: JSON.parse(JSON.stringify(blocks[blockIndex])), index: blockIndex };
+            blocks.splice(blockIndex, 1);
+            showUndoToast('已删除一个卡片。', 'undoDelete');
+        }
         if (selectedBlockId === id) selectBlockForEditing(null);
         render();
     }
     function hideUndoToast() { document.getElementById('undo-toast').classList.remove('show'); document.removeEventListener('click', hideUndoToast, true); }
-    function showUndoToast() { const toast = document.getElementById('undo-toast'); toast.classList.add('show'); setTimeout(() => document.addEventListener('click', hideUndoToast, true), 100); }
+    function showUndoToast(message, action) {
+        const toast = document.getElementById('undo-toast');
+        document.getElementById('undo-toast-message').textContent = message;
+        document.getElementById('undo-toast-btn').setAttribute('onclick', `${action}(event)`);
+        toast.classList.add('show');
+        setTimeout(() => document.addEventListener('click', hideUndoToast, true), 100);
+    }
     function undoDelete(event) { event.stopPropagation(); if (lastDeletedBlock) { blocks.splice(lastDeletedBlock.index, 0, lastDeletedBlock.block); lastDeletedBlock = null; hideUndoToast(); render(); } }
+
+    function undoAIApply(event) {
+        event.stopPropagation();
+        if (lastStateBeforeAIApply) {
+            blocks = lastStateBeforeAIApply;
+            lastStateBeforeAIApply = null;
+            hideUndoToast();
+            render();
+        }
+    }
+
     function updateBlock(id, key, value) { const block = blocks.find(b => b.id === id); if (block) { block[key] = value; renderPreview(); } }
     function updateBlockStyle(id, key, value) { const block = blocks.find(b => b.id === id); if(block) { block[key] = value; render(); } }
     function updateSubBlock(blockId, subBlockId, key, value) {
@@ -663,7 +723,7 @@
                 if(newType === 'divider') { delete block.fontSize; delete block.textColor; }
                 delete block.subBlocks;
             } else if (!isTitleBlock && wasTitleBlock) {
-                block.subBlocks = [{id: Date.now()+1, type: 'title', content: block.content || '新卡片标题'}];
+                block.subBlocks = [{id: generateUniqueId(), type: 'title', content: block.content || '新卡片标题'}];
                 block.backgroundColor = 'default';
                 delete block.content;
             }
@@ -677,10 +737,22 @@
         reader.readAsDataURL(file);
     }
     function deleteImage(blockId, subBlockId) { updateSubBlock(blockId, subBlockId, 'url', null); render(); }
-    function selectBlockForEditing(id) { selectedBlockId = id; render(); }
+
     function handlePaste(event) { event.preventDefault(); const text = event.clipboardData.getData('text/plain'); document.execCommand('insertText', false, text); }
     function getEditor(editorId) { return document.getElementById(editorId); }
-    function formatDoc(editorId, command) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand(command, false, null); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
+
+    function formatDoc(editorId, command) {
+        const editor = getEditor(editorId);
+        if (editor) {
+            editor.focus();
+            document.execCommand(command, false, null);
+            if (command === 'removeFormat') {
+                document.execCommand('hiliteColor', false, 'transparent');
+            }
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
+
     function applyHighlight(editorId, color) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand('hiliteColor', false, color); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
     function applyTextColor(editorId, color) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand('foreColor', false, color); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
     function insertBoldDot(editorId) { const editor = getEditor(editorId); if (editor) { editor.focus(); document.execCommand('insertHTML', false, '<strong>&bull;</strong>&nbsp;'); editor.dispatchEvent(new Event('input', { bubbles: true })); } }
@@ -688,7 +760,13 @@
     function setupDragAndDrop() {
         document.querySelector('.scroll-wrapper').onclick = (e) => { if (e.target === e.currentTarget) { selectBlockForEditing(null); } };
         const container = document.getElementById('preview-canvas');
-        setupDraggableContainer(container, (newOrder) => { const blockOrder = newOrder.filter(id => blocks.some(b => b.id == id)); blocks = blockOrder.map(id => blocks.find(b => b.id == parseInt(id))); render(); }, '[data-id]');
+        setupDraggableContainer(container, (newOrder) => {
+            const blockOrder = newOrder.map(id => blocks.find(b => b.id == parseInt(id, 10))).filter(Boolean);
+            if (blockOrder.length > 0) {
+                blocks = blockOrder;
+            }
+            render();
+        }, '[data-id]');
     }
     function setupSubBlockDragAndDrop(container, blockId) {
         if (!container) return;
@@ -696,7 +774,7 @@
             const block = blocks.find(b => b.id === blockId);
             if (block && block.subBlocks) {
                 const titleBlock = block.subBlocks.find(sb => sb.type === 'title');
-                const newOrderedMovable = newOrder.map(id => block.subBlocks.find(sb => sb.id === parseFloat(id)));
+                const newOrderedMovable = newOrder.map(id => block.subBlocks.find(sb => sb.id === parseInt(id, 10))).filter(Boolean);
                 block.subBlocks = [titleBlock, ...newOrderedMovable].filter(Boolean);
                 render();
             }
@@ -717,7 +795,7 @@
     }
     function getDragAfterElement(container, y, selector) { const draggableElements = [...container.querySelectorAll(selector)]; return draggableElements.reduce((closest, child) => { const box = child.getBoundingClientRect(); const offset = y - box.top - box.height / 2; if (offset < 0 && offset > closest.offset) { return { offset: offset, element: child }; } else { return closest; } }, { offset: Number.NEGATIVE_INFINITY }).element; }
 
-    // --- EXPORT & IMPORT FUNCTIONS (UPDATED) ---
+    // --- EXPORT & IMPORT FUNCTIONS ---
     function exportImage(btn) {
         if (!reportTitle) { alert('请输入报告文件名！'); return; }
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在生成...'; btn.disabled = true;
@@ -740,23 +818,19 @@
         link.click();
         URL.revokeObjectURL(link.href);
     }
-
-    // === NEW FUNCTION: Export AI Template ===
     function exportTemplate() {
         const templateData = generateAITemplate();
         const blob = new Blob([JSON.stringify(templateData, null, 2)], { type: 'application/json' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `AI_template_for_report.json`;
+        link.download = `TianShu_template_for_report.json`;
         link.click();
         URL.revokeObjectURL(link.href);
     }
-
-    // === NEW FUNCTION: Generate AI Template Structure ===
     function generateAITemplate() {
         return {
             template_schema_version: "1.0",
-            description: "这是汽车发布会分析报告的AI填充模板。请根据每个字段的'description'和'options'来填充内容。'content'字段可以是一个包含多段文字的数组，或单个字符串。简单的HTML标签如 <strong>, <br> 可以在字符串内使用。",
+            description: "这是汽车发布会分析报告的天枢大模型填充模板。请根据每个字段的'description'和'options'来填充内容。'content'字段可以是一个包含多段文字的数组，或单个字符串。简单的HTML标签如 <strong>, <br> 可以在字符串内使用。",
             reportTitle: "【请填写报告主标题】",
             coverImageUrl: "【请粘贴封面图片的URL，或留空】",
             blocks: [
@@ -770,7 +844,6 @@
         };
     }
 
-    // === NEW FUNCTION: Parse imported AI Template ===
     function parseAITemplate(templateData) {
         try {
             const getValue = (field) => (field && typeof field === 'object' && field.value !== undefined) ? field.value : field;
@@ -778,17 +851,17 @@
             coverImageUrl = getValue(templateData.coverImageUrl) && !String(getValue(templateData.coverImageUrl)).startsWith("【") ? getValue(templateData.coverImageUrl) : null;
             const newBlocks = [];
             for(const block of templateData.blocks) {
-                const newBlock = { id: Date.now() + Math.random() };
+                const newBlock = { id: generateUniqueId() };
                 newBlock.type = block.type;
                 switch(block.type) {
                     case 'large': case 'small':
                         newBlock.backgroundColor = getValue(block.backgroundColor) || 'default';
                         newBlock.titleBarColor = getValue(block.titleBarColor);
                         newBlock.subBlocks = [];
-                        if (block.title && !String(getValue(block.title)).startsWith("【")) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'title', content: getValue(block.title) }); }
-                        if (block.content && Array.isArray(block.content)) { const fullContent = block.content.map(p => `<p>${getValue(p)}</p>`).join(''); newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: fullContent }); }
-                        else if (block.content && !Array.isArray(block.content) && !String(getValue(block.content)).startsWith("【")) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'content', content: `<p>${getValue(block.content)}</p>` }); }
-                        if (block.type === 'large' && block.images && Array.isArray(block.images)) { block.images.forEach(imgUrl => { if(getValue(imgUrl) && !String(getValue(imgUrl)).startsWith("【")) { newBlock.subBlocks.push({ id: Date.now() + Math.random(), type: 'image', url: getValue(imgUrl) }); } }); }
+                        if (block.title && !String(getValue(block.title)).startsWith("【")) { newBlock.subBlocks.push({ id: generateUniqueId(), type: 'title', content: getValue(block.title) }); }
+                        if (block.content && Array.isArray(block.content)) { const fullContent = block.content.map(p => `<p>${getValue(p)}</p>`).join(''); newBlock.subBlocks.push({ id: generateUniqueId(), type: 'content', content: fullContent }); }
+                        else if (block.content && !Array.isArray(block.content) && !String(getValue(block.content)).startsWith("【")) { newBlock.subBlocks.push({ id: generateUniqueId(), type: 'content', content: `<p>${getValue(block.content)}</p>` }); }
+                        if (block.type === 'large' && block.images && Array.isArray(block.images)) { block.images.forEach(imgUrl => { if(getValue(imgUrl) && !String(getValue(imgUrl)).startsWith("【")) { newBlock.subBlocks.push({ id: generateUniqueId(), type: 'image', url: getValue(imgUrl) }); } }); }
                         break;
                     case 'divider':
                         newBlock.content = getValue(block.content) || ''; newBlock.align = getValue(block.align) || 'center'; newBlock.color = getValue(block.color) || 'default';
@@ -802,13 +875,10 @@
             }
             blocks = newBlocks;
             coverImageMarginBottom = 24; cardShadowIntensity = 100; showFinalAttribution = false; finalCaption = ''; finalSource = '长安科技/用户与市场/用户洞察与前瞻'; finalTextAlign = 'center';
-            selectedBlockId = null;
             render();
-            alert('AI模板导入成功！');
-        } catch(error) { console.error('解析AI模板失败:', error); alert('解析AI模板失败，请检查文件格式是否正确。'); }
+        } catch(error) { console.error('解析天枢大模型模板失败:', error); alert('解析天枢大模型模板失败，请检查文件格式是否正确。'); throw error; }
     }
 
-    // === UPDATED Import Logic ===
     document.getElementById('import-file-input').onchange = (event) => {
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -827,7 +897,7 @@
                     finalCaption = state.finalCaption || '';
                     finalSource = state.finalSource || '长安科技/用户与市场/用户洞察与前瞻';
                     finalTextAlign = state.finalTextAlign || 'center';
-                    selectedBlockId = null;
+                    selectBlockForEditing(null);
                     render();
                     alert('项目导入成功！');
                 } else { alert('无效的项目或模板文件格式。'); }
@@ -837,77 +907,345 @@
         event.target.value = '';
     };
 
-    // --- ## 新增的 AI 功能相关函数 ## ---
+    // --- ## ALL-NEW AI CHAT & OCR FUNCTIONS ## ---
 
-    // # 重要 #: 替换成你自己的 Worker URL
-    const WORKER_URL = 'https://long-image-ai-proxy.731526101.workers.dev';
+    const WORKER_URL = '/api/ai-proxy';
 
-    // 1. 点击“AI填充”按钮时触发文件选择
-    function triggerAIFill(btn) {
-        document.getElementById('ai-image-input').click();
+    function addChatMessage(sender, content, messageId = null) {
+        const messagesContainer = document.getElementById('ai-chat-messages');
+        if (!messagesContainer) return;
+        const messageData = { sender, content, messageId };
+        aiChatHistory.push(messageData);
+
+        const bubble = document.createElement('div');
+        bubble.className = `ai-chat-bubble ${sender}`;
+        if (messageId) { bubble.id = messageId; }
+        bubble.innerHTML = content;
+        messagesContainer.appendChild(bubble);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    // 2. 将单个文件转换为 Base64 的辅助函数
+    function _applyAITemplate(messageId) {
+        const message = aiChatHistory.find(m => m.messageId === messageId);
+        if (message && message.templateData) {
+            lastStateBeforeAIApply = JSON.parse(JSON.stringify(blocks));
+            parseAITemplate(message.templateData);
+
+            showFinalAttribution = true;
+            finalCaption = '由天枢大模型生成';
+            message.applied = true;
+
+            const bubble = document.getElementById(messageId);
+            if(bubble) {
+                const newContent = getAIResponseContent(messageId, true);
+                bubble.innerHTML = newContent;
+                message.content = newContent;
+            }
+            showUndoToast('已应用模板并添加注释。', 'undoAIApply');
+            renderPreview();
+        }
+    }
+
+    function getAIResponseContent(messageId, applied) {
+        const message = aiChatHistory.find(m => m.messageId === messageId);
+        if (!message || !message.templateData) return '发生错误';
+
+        const formattedJson = JSON.stringify(message.templateData, null, 2);
+        const escapedJson = formattedJson.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+        let buttonsHtml = '';
+        if (applied) {
+            buttonsHtml = `
+                <button class="control-btn" disabled><i class="fas fa-check"></i> 已应用</button>
+                <button class="control-btn reapply-btn" onclick="_applyAITemplate('${messageId}')"><i class="fas fa-redo"></i> 重新应用</button>
+            `;
+        } else {
+            buttonsHtml = `<button class="control-btn" onclick="_applyAITemplate('${messageId}')">应用到报告</button>`;
+        }
+
+        return `
+            <p>天枢大模型已生成报告内容，请确认：</p>
+            <pre><code>${escapedJson}</code></pre>
+            <div class="flex items-center gap-2 mt-3">${buttonsHtml}</div>
+        `;
+    }
+
+    function renderAIChatView(container) {
+        container.innerHTML = `
+            <div id="ai-chat-container">
+                <div id="ai-chat-messages"></div>
+                <div id="ai-file-preview-container" class="hidden"></div>
+                <div id="ai-chat-composer">
+                    <button class="ai-chat-btn" title="上传图片或Word文档" onclick="document.getElementById('ai-file-input').click()">
+                        <i class="fas fa-plus-circle"></i>
+                    </button>
+                    <textarea id="ai-chat-input" rows="1" placeholder="补充文字说明..."></textarea>
+                    <button id="ai-chat-send-btn" class="control-btn !rounded-full !px-4 !py-2" onclick="sendAIPrompt()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        const messagesContainer = document.getElementById('ai-chat-messages');
+        aiChatHistory.forEach(msg => {
+            const bubble = document.createElement('div');
+            bubble.className = `ai-chat-bubble ${msg.sender}`;
+            if (msg.messageId) { bubble.id = msg.messageId; }
+            bubble.innerHTML = msg.content;
+            messagesContainer.appendChild(bubble);
+        });
+        if (messagesContainer) { messagesContainer.scrollTop = messagesContainer.scrollHeight; }
+
+        renderAIFilePreviews();
+
+        const textarea = document.getElementById('ai-chat-input');
+        textarea.addEventListener('input', () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+        });
+    }
+
+    async function performOCR(file) {
+        try {
+            const worker = await Tesseract.createWorker('chi_sim+eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        file.ocrProgress = Math.round(m.progress * 100);
+                        renderAIFilePreviews();
+                    }
+                }
+            });
+            const { data: { text } } = await worker.recognize(file);
+            await worker.terminate();
+            file.ocrStatus = 'completed';
+            file.ocrText = text;
+        } catch (error) {
+            console.error("OCR Error:", error);
+            file.ocrStatus = 'error';
+        } finally {
+            renderAIFilePreviews();
+        }
+    }
+
+    async function processWordFile(file) {
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            file.ocrStatus = 'completed';
+            file.ocrText = result.value;
+        } catch (error) {
+            console.error("Word file processing Error:", error);
+            file.ocrStatus = 'error';
+            file.ocrText = '';
+        } finally {
+            renderAIFilePreviews();
+        }
+    }
+
+    // MODIFIED: Reverted to sequential processing for stability, but with better UX
+    async function handleAIFileSelection(input) {
+        const files = Array.from(input.files);
+        if (!files.length) return;
+
+        // Step 1: Immediately prepare file objects and add them to the global array
+        const newFileObjects = [];
+        for (const file of files) {
+            const fileObject = file;
+            fileObject.ocrStatus = 'processing';
+            fileObject.ocrProgress = 0;
+            fileObject.ocrText = '';
+            if (file.type.startsWith('image/')) {
+                fileObject.dataURL = await fileToBase64(file);
+            }
+            newFileObjects.push(fileObject);
+        }
+        aiFiles.push(...newFileObjects);
+
+        // Step 2: Render all new files at once to show they are in the queue
+        renderAIFilePreviews();
+
+        // Step 3: Process each new file sequentially (one by one) for stability
+        for (const file of newFileObjects) {
+            if (file.type.startsWith('image/')) {
+                await performOCR(file);
+            } else if (file.name.endsWith('.docx')) {
+                await processWordFile(file);
+            } else {
+                file.ocrStatus = 'error';
+                file.ocrText = '不支持的文件类型';
+                renderAIFilePreviews(); // Update UI for unsupported files
+            }
+        }
+
+        console.log("All new files have been processed.");
+        input.value = '';
+    }
+
+    function removeAIFile(index) {
+        console.log(`Attempting to remove file at index: ${index}. Array size before: ${aiFiles.length}`);
+        aiFiles.splice(index, 1);
+        console.log(`Array size after splice: ${aiFiles.length}`);
+        renderAIFilePreviews();
+    }
+
+    function checkAllOcrComplete() {
+        if (aiFiles.length === 0) return true;
+        return aiFiles.every(file => file.ocrStatus === 'completed' || file.ocrStatus === 'error');
+    }
+
+    function renderAIFilePreviews() {
+        const container = document.getElementById('ai-file-preview-container');
+        const sendBtn = document.getElementById('ai-chat-send-btn');
+        if (!container) return;
+
+        if (aiFiles.length === 0) {
+            container.innerHTML = ''; // Clear content
+            container.classList.add('hidden');
+            if (sendBtn) sendBtn.disabled = false;
+            return;
+        }
+
+        container.classList.remove('hidden');
+        container.innerHTML = aiFiles.map((file, index) => {
+            let overlay = '';
+            if (file.ocrStatus === 'processing') {
+                const progressText = file.type.startsWith('image/') ? `识别中 ${file.ocrProgress}%` : '处理中...';
+                overlay = `<div class="ocr-overlay"><i class="fas fa-spinner fa-spin"></i><span>${progressText}</span></div>`;
+            } else if (file.ocrStatus === 'completed') {
+                overlay = `<div class="ocr-overlay" style="background:rgba(22, 163, 74, 0.7);"><i class="fas fa-check-circle"></i><span>处理完成</span></div>`;
+            } else if (file.ocrStatus === 'error') {
+                overlay = `<div class="ocr-overlay" style="background:rgba(220, 38, 38, 0.7);"><i class="fas fa-exclamation-triangle"></i><span>处理失败</span></div>`;
+            }
+
+            let previewHtml = '';
+            if (file.type.startsWith('image/')) {
+                previewHtml = `<img src="${file.dataURL}" alt="${file.name}">`;
+            } else {
+                previewHtml = `
+                    <div class="file-placeholder">
+                        <i class="fas fa-file-word"></i>
+                        <span title="${file.name}">${file.name}</span>
+                    </div>
+                 `;
+            }
+
+            return `
+                <div class="ai-file-preview-item">
+                    ${previewHtml}
+                    ${overlay}
+                    <button class="ai-file-preview-delete" data-index="${index}">&times;</button>
+                </div>
+            `;
+        }).join('');
+
+        if (sendBtn) {
+            sendBtn.disabled = !checkAllOcrComplete();
+        }
+    }
+
     function fileToBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => {
-                // 我们只需要逗号后面的纯 Base64 部分
-                const base64String = reader.result.split(',')[1];
-                resolve(base64String);
+                resolve(reader.result);
             };
             reader.onerror = error => reject(error);
             reader.readAsDataURL(file);
         });
     }
 
-    // 3. 用户选择图片后，处理 AI 填充的核心逻辑
-    async function handleAIFill(input) {
-        const files = input.files;
-        if (!files || files.length === 0) {
+
+    async function sendAIPrompt() {
+        const sendBtn = document.getElementById('ai-chat-send-btn');
+        const textInput = document.getElementById('ai-chat-input');
+        const userTypedText = textInput.value.trim();
+
+        const ocrTexts = aiFiles
+            .map(file => file.ocrText || '')
+            .filter(text => text)
+            .join('\n\n---\n\n');
+
+        let fullPrompt = userTypedText;
+        if (ocrTexts) {
+            fullPrompt = `[从文件识别出的文字内容如下：]\n${ocrTexts}\n\n[用户的补充要求如下：]\n${userTypedText}`;
+        }
+
+        if (!fullPrompt && aiFiles.length === 0) {
+            alert('请输入文字或上传文件进行识别。');
             return;
         }
 
-        const aiButton = document.querySelector('button[onclick="triggerAIFill(this)"]');
-        const originalButtonText = aiButton.innerHTML;
-        aiButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在请求AI分析...';
-        aiButton.disabled = true;
+        let userMessageHtml = '';
+        const currentFilesForHistory = [...aiFiles];
+        if (currentFilesForHistory.length > 0) {
+            const filePreviewsHtml = currentFilesForHistory.map(file => {
+                if (file.type.startsWith('image/')) {
+                    return `<img src="${file.dataURL}" style="width: 50px; height: 50px; border-radius: 5px; object-fit: cover; display: inline-block; margin-right: 5px;" title="${file.name}">`;
+                }
+                return `<span style="display: inline-flex; align-items: center; gap: 4px; background-color: #e5e7eb; padding: 4px 8px; border-radius: 5px; font-size: 12px; margin-right: 5px;" title="${file.name}"><i class="fas fa-file-word"></i>${file.name}</span>`;
+            }).join('');
+            userMessageHtml += `<div style="margin-bottom: 8px;">${filePreviewsHtml}</div>`;
+        }
+        if (userTypedText) {
+            const sanitizedText = userTypedText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            userMessageHtml += `<div>${sanitizedText}</div>`;
+        }
+        addChatMessage('user', userMessageHtml);
+
+        textInput.value = '';
+        textInput.style.height = 'auto';
+        aiFiles = [];
+        renderAIFilePreviews();
+
+        const thinkingMessageId = `ai-thinking-${Date.now()}`;
+        addChatMessage('assistant', '<i class="fas fa-spinner fa-spin"></i> 正在生成报告...', thinkingMessageId);
+
+        const originalBtnHtml = sendBtn.innerHTML;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        sendBtn.disabled = true;
 
         try {
-            // 将所有图片文件并行转换为 Base64
-            const base64Images = await Promise.all(
-                Array.from(files).map(file => fileToBase64(file))
-            );
-
-            // 发送请求到我们的 Cloudflare Worker
+            const requestBody = { prompt: fullPrompt };
             const response = await fetch(WORKER_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ images: base64Images }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(`AI 服务返回错误: ${errorData.error || response.statusText}`);
+                throw new Error(`天枢大模型服务返回错误: ${errorData.error || response.statusText}`);
             }
 
             const aiTemplateData = await response.json();
 
-            // 调用您已有的函数来解析和渲染页面
-            // 注意：parseAITemplate 内部有 alert('AI模板导入成功！')，这里不再重复
-            parseAITemplate(aiTemplateData);
+            const thinkingBubble = document.getElementById(thinkingMessageId);
+            const historyMessage = aiChatHistory.find(m => m.messageId === thinkingMessageId);
 
+            if (thinkingBubble && historyMessage) {
+                historyMessage.templateData = aiTemplateData;
+                historyMessage.applied = false;
+                const newContent = getAIResponseContent(thinkingMessageId, false);
+                thinkingBubble.innerHTML = newContent;
+                historyMessage.content = newContent;
+            }
         } catch (error) {
-            console.error('AI 填充失败:', error);
-            alert(`AI 填充失败: ${error.message}`);
+            console.error('天枢大模型填充失败:', error);
+            const thinkingBubble = document.getElementById(thinkingMessageId);
+            const historyMessage = aiChatHistory.find(m => m.messageId === thinkingMessageId);
+            const errorMessage = `天枢大模型填充失败: ${error.message}`;
+
+            if (thinkingBubble && historyMessage) {
+                thinkingBubble.className = 'ai-chat-bubble assistant error';
+                thinkingBubble.innerHTML = errorMessage;
+                historyMessage.sender = 'assistant error';
+                historyMessage.content = errorMessage;
+            } else {
+                addChatMessage('assistant error', errorMessage);
+            }
         } finally {
-            // 恢复按钮状态
-            aiButton.innerHTML = originalButtonText;
-            aiButton.disabled = false;
-            // 清空文件输入框，以便下次可以上传相同的文件
-            input.value = '';
+            sendBtn.innerHTML = originalBtnHtml;
+            sendBtn.disabled = false;
         }
     }
 
@@ -916,33 +1254,20 @@
     let isPanning = false;
     let startPan = { x: 0, y: 0 };
     let startScroll = { left: 0, top: 0 };
-
-    function showHelpModal() {
-        document.getElementById('help-modal').style.display = 'flex';
-    }
-
-    function hideHelpModal() {
-        document.getElementById('help-modal').style.display = 'none';
-    }
-
+    function showHelpModal() { document.getElementById('help-modal').style.display = 'flex'; }
+    function hideHelpModal() { document.getElementById('help-modal').style.display = 'none'; }
     function setupHelpImagePanning() {
         const container = document.getElementById('help-image-container');
         const img = document.getElementById('help-image');
-
         img.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return; // Only pan with left-click
+            if (e.button !== 0) return;
             isPanning = true;
             startPan = { x: e.pageX, y: e.pageY };
             startScroll = { left: container.scrollLeft, top: container.scrollTop };
             img.style.cursor = 'grabbing';
             e.preventDefault();
         });
-
-        window.addEventListener('mouseup', () => {
-            isPanning = false;
-            img.style.cursor = 'grab';
-        });
-
+        window.addEventListener('mouseup', () => { isPanning = false; img.style.cursor = 'grab'; });
         window.addEventListener('mousemove', (e) => {
             if (!isPanning) return;
             e.preventDefault();
@@ -958,11 +1283,26 @@
     function showAddDropdown() { clearTimeout(hideAddDropdownTimeout); document.querySelector('.add-block-dropdown-content').classList.add('show'); }
     function hideAddDropdown(force = false) { const dropdown = document.querySelector('.add-block-dropdown-content'); if (force) { dropdown.classList.remove('show'); return; } hideAddDropdownTimeout = setTimeout(() => dropdown.classList.remove('show'), 200); }
     function cancelHideAddDropdown() { clearTimeout(hideAddDropdownTimeout); }
+
+    document.addEventListener('click', (event) => {
+        const target = event.target.closest('.ai-file-preview-delete');
+        if (target) {
+            const previewContainer = document.getElementById('ai-file-preview-container');
+            if (previewContainer && previewContainer.contains(target)) {
+                const index = parseInt(target.dataset.index, 10);
+                if (!isNaN(index)) {
+                    removeAIFile(index);
+                }
+            }
+        }
+    });
+
     window.onload = () => {
+        initialBlocks.forEach(b => b.id = generateUniqueId());
         blocks = migrateToSubBlockModel(initialBlocks);
         render();
         setupDragAndDrop();
-        setupHelpImagePanning(); // Initialize the panning logic for the help image
+        setupHelpImagePanning();
     };
 </script>
 </body>
