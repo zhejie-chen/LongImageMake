@@ -173,6 +173,23 @@
         .ocr-overlay .fas { font-size: 1.25rem; margin-bottom: 4px; }
         .reapply-btn { background-color: #16a34a !important; margin-left: 0.5rem; }
         .reapply-btn:hover { background-color: #15803d !important; }
+
+        /* --- AI Settings Modal Styles --- */
+        .ai-settings-modal-content {
+            background-color: #fefefe;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .ai-settings-modal-content input {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            outline: none;
+        }
     </style>
 </head>
 <body>
@@ -199,6 +216,7 @@
         <div class="controls-header">
             <button id="editor-back-btn" class="ai-chat-btn hidden" onclick="switchToGlobalView()"><i class="fas fa-arrow-left"></i></button>
             <span id="editor-header-title">全局设置</span>
+            <button id="ai-settings-btn" class="ai-chat-btn hidden ml-auto" onclick="showAiSettingsModal()" title="设置AI"><i class="fas fa-cog"></i></button>
         </div>
         <div id="editor-cards-container"></div>
         <button id="floating-help-btn" class="hidden" onclick="showHelpModal()" title="查看天枢大模型模板使用说明"><i class="fas fa-question"></i></button>
@@ -223,6 +241,29 @@
     </div>
 </div>
 
+<div id="ai-settings-modal" class="help-modal-backdrop" style="display: none;">
+    <div class="ai-settings-modal-content">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold">天枢大模型 设置</h3>
+            <button class="text-gray-400 hover:text-gray-600 text-2xl font-bold" onclick="hideAiSettingsModal()">&times;</button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label for="ai-auth-token-input" class="block text-sm font-medium text-gray-700 mb-1">API (Authorization Token)</label>
+                <input type="password" id="ai-auth-token-input" placeholder="在此输入您的访问令牌 (Token)">
+            </div>
+            <div>
+                <label for="ai-model-endpoint-input" class="block text-sm font-medium text-gray-700 mb-1">Endpoint (Model ID)</label>
+                <input type="text" id="ai-model-endpoint-input" placeholder="在此输入 Endpoint/Model ID (例如: 321)">
+            </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+            <button class="control-btn" onclick="saveAiSettings()">保存并关闭</button>
+        </div>
+    </div>
+</div>
+
+
 <script>
     // --- DATA MODEL ---
     let reportTitle = "汽车发布会分析报告";
@@ -243,6 +284,11 @@
     let aiChatHistory = [
         { sender: 'assistant', content: '您好！我是天枢大模型。请上传图片或Word文档进行文字识别，并在下方输入框补充您的要求，我会为您生成报告。' }
     ];
+
+    // --- MODIFIED: AI Settings State ---
+    let aiAuthToken = '';
+    let aiModelEndpoint = '';
+
 
     // --- Global Settings Variables ---
     let cardShadowIntensity = 100;
@@ -316,10 +362,13 @@
         const headerTitle = document.getElementById('editor-header-title');
         const helpBtn = document.getElementById('floating-help-btn');
         const backBtn = document.getElementById('editor-back-btn');
+        const settingsBtn = document.getElementById('ai-settings-btn');
 
         container.innerHTML = '';
         document.body.onclick = null;
         backBtn.classList.add('hidden');
+        settingsBtn.classList.add('hidden'); // Hide by default
+
 
         switch(editorView) {
             case 'global':
@@ -342,6 +391,7 @@
                 headerTitle.textContent = '天枢大模型 填充助手';
                 helpBtn.style.display = 'none';
                 backBtn.classList.remove('hidden');
+                settingsBtn.classList.remove('hidden'); // Show it for AI chat view
                 renderAIChatView(container);
                 break;
         }
@@ -909,7 +959,49 @@
 
     // --- ## ALL-NEW AI CHAT & OCR FUNCTIONS ## ---
 
-    const WORKER_URL = '/api/ai-proxy';
+    // --- MODIFIED: AI Settings Modal Functions ---
+    function showAiSettingsModal() {
+        document.getElementById('ai-auth-token-input').value = aiAuthToken;
+        document.getElementById('ai-model-endpoint-input').value = aiModelEndpoint;
+        document.getElementById('ai-settings-modal').style.display = 'flex';
+    }
+
+    function hideAiSettingsModal() {
+        document.getElementById('ai-settings-modal').style.display = 'none';
+    }
+
+    function saveAiSettings() {
+        const tokenInput = document.getElementById('ai-auth-token-input').value.trim();
+        const endpointInput = document.getElementById('ai-model-endpoint-input').value.trim();
+
+        if (!tokenInput || !endpointInput) {
+            alert('API (Authorization Token) 和 Endpoint (Model ID) 不能为空。');
+            return;
+        }
+
+        aiAuthToken = tokenInput;
+        aiModelEndpoint = endpointInput;
+
+        try {
+            localStorage.setItem('aiAuthToken', aiAuthToken);
+            localStorage.setItem('aiModelEndpoint', aiModelEndpoint);
+            alert('设置已保存！');
+            hideAiSettingsModal();
+        } catch (e) {
+            console.error("无法保存到 localStorage:", e);
+            alert("无法保存设置。您的浏览器可能禁用了 localStorage 或处于隐私模式。");
+        }
+    }
+
+    function loadAiSettings() {
+        try {
+            aiAuthToken = localStorage.getItem('aiAuthToken') || '';
+            aiModelEndpoint = localStorage.getItem('aiModelEndpoint') || '';
+        } catch (e) {
+            console.error("无法从 localStorage 加载设置:", e);
+        }
+    }
+
 
     function addChatMessage(sender, content, messageId = null) {
         const messagesContainer = document.getElementById('ai-chat-messages');
@@ -1042,12 +1134,10 @@
         }
     }
 
-    // MODIFIED: Reverted to sequential processing for stability, but with better UX
     async function handleAIFileSelection(input) {
         const files = Array.from(input.files);
         if (!files.length) return;
 
-        // Step 1: Immediately prepare file objects and add them to the global array
         const newFileObjects = [];
         for (const file of files) {
             const fileObject = file;
@@ -1061,10 +1151,8 @@
         }
         aiFiles.push(...newFileObjects);
 
-        // Step 2: Render all new files at once to show they are in the queue
         renderAIFilePreviews();
 
-        // Step 3: Process each new file sequentially (one by one) for stability
         for (const file of newFileObjects) {
             if (file.type.startsWith('image/')) {
                 await performOCR(file);
@@ -1073,18 +1161,14 @@
             } else {
                 file.ocrStatus = 'error';
                 file.ocrText = '不支持的文件类型';
-                renderAIFilePreviews(); // Update UI for unsupported files
+                renderAIFilePreviews();
             }
         }
-
-        console.log("All new files have been processed.");
         input.value = '';
     }
 
     function removeAIFile(index) {
-        console.log(`Attempting to remove file at index: ${index}. Array size before: ${aiFiles.length}`);
         aiFiles.splice(index, 1);
-        console.log(`Array size after splice: ${aiFiles.length}`);
         renderAIFilePreviews();
     }
 
@@ -1099,7 +1183,7 @@
         if (!container) return;
 
         if (aiFiles.length === 0) {
-            container.innerHTML = ''; // Clear content
+            container.innerHTML = '';
             container.classList.add('hidden');
             if (sendBtn) sendBtn.disabled = false;
             return;
@@ -1154,8 +1238,29 @@
         });
     }
 
+    function generateAITemplateForPrompt() {
+        return {
+            template_schema_version: "1.0",
+            reportTitle: "【请填写报告主标题】",
+            coverImageUrl: "【请粘贴封面图片的URL，或留空】",
+            blocks: [
+                { type: "divider", content: "【全文总标题】", "align": "center", "color": "black" },
+                { type: "large", title: "【第一个核心板块标题】", "titleBarColor": "blue", content: ["【内容段落1...】"], },
+                { type: "divider", content: "【第二个章节标题】", "align": "center", "color": "default" },
+                { type: "small", title: "【并列内容1】", "titleBarColor": "purple", content: ["【简介1】"] },
+                { type: "small", title: "【并列内容2】", "titleBarColor": "purple", content: ["【简介2】"] }
+            ]
+        };
+    }
 
+    // MODIFIED: This function now uses the user-configured Token and Endpoint
     async function sendAIPrompt() {
+        if (!aiAuthToken || !aiModelEndpoint) {
+            alert('请先点击右上角的齿轮按钮设置您的 AI API Token 和 Endpoint。');
+            showAiSettingsModal();
+            return;
+        }
+
         const sendBtn = document.getElementById('ai-chat-send-btn');
         const textInput = document.getElementById('ai-chat-input');
         const userTypedText = textInput.value.trim();
@@ -1205,19 +1310,86 @@
         sendBtn.disabled = true;
 
         try {
-            const requestBody = { prompt: fullPrompt };
-            const response = await fetch(WORKER_URL, {
+            const systemPrompt = `你是一位顶级的汽车行业分析师和视觉设计师。你的任务是根据用户提供的文字内容（可能包含从图片OCR识别的文字），生成一份结构清晰、信息准确、且视觉上吸引人的专业分析报告。
+
+请严格按照以下 JSON 结构和指南返回结果，不要添加任何额外的解释或说明文字，只返回一个完整的 JSON 对象。
+
+【布局与结构指南】
+这是生成高质量长图的关键，请严格遵守：
+
+1.  **大标题 (\`divider\`)**:
+    * **作为全文总标题**: 当它是第一个模块时，用于整个长图的标题，样式应设为 \`"align": "center"\` 和 \`"color": "black"\`。
+    * **作为章节标题**: 在长图中间用于分隔不同板块时，样式使用默认的 \`"align": "center"\` 和 \`"color": "default"\` (灰色)。
+
+2.  **中标题 (\`mediumtext\`)**:
+    * 用于展示较长的、引人注目的宣传语或小节标题，但字数不宜过多，核心作用是醒目提示。
+
+3.  **小标题 (\`puretext\`)**:
+    * 用于展示字数极少的亮点功能或关键参数（如“800V高压平台”）。内容可以与卡片内的正文重复，以达到强调效果。
+
+4.  **大卡片 (\`large\`)**:
+    * 是内容的核心载体。如果某个章节的正文内容过长，应主动将其拆分为【多个内容连贯的大卡片】，并把它们都放在同一个大标题 (\`divider\`) 之下。
+
+5.  **小卡片 (\`small\`) 与 小标题 (\`puretext\`) 的布局规则**:
+    * 这两种类型用于展示并列的、简短的信息点。
+    * 它们应该**成对或以偶数数量出现** (例如, 2个或4个), 并且**内容相关度高的应该相邻放置**。例如，可以并排放置两个介绍亮点功能的小卡片，或者并排放置两个展示核心参数的小标题。
+
+【高级样式指南】
+请克制地、有策略地使用以下样式，以保持报告的专业和整洁感：
+
+* **卡片样式**: \`"titleBarColor"\` (可选: "blue", "purple", "orange") 和 \`"backgroundColor"\` (可选: "blue", "purple", "orange", "default")。
+* **文本样式**: 在 "content" 字段内使用 \`<strong>加粗</strong>\` 和 \`<mark style="background-color: #fde047;">高亮</mark>\` (可选颜色: #fde047黄, #bfdbfe蓝, #bbf7d0绿, #e9d5ff紫)。
+* **标题样式**: \`"align"\`, \`"color"\`, \`"fontSize"\`, \`"textColor"\` 等，根据不同标题类型使用。
+
+【JSON 输出模板】
+这是你要填充的 JSON 模板，其中已包含样式字段作为示例:
+${JSON.stringify(generateAITemplateForPrompt(), null, 2)}`;
+
+            const dataForAI = {
+                "model": aiModelEndpoint, // Use the configured endpoint
+                "temperature": 0.7,
+                "max_tokens": 8192,
+                "messages": [
+                    { "role": "system", "content": systemPrompt },
+                    { "role": "user", "content": fullPrompt }
+                ],
+                "stream": false,
+            };
+
+            const AI_API_URL = 'http://ai.sda.changan.com.cn/api/v1/chat/completions'; // Fixed URL
+
+            const response = await fetch(AI_API_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': aiAuthToken, // Use the configured token
+                },
+                body: JSON.stringify(dataForAI),
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(`天枢大模型服务返回错误: ${errorData.error || response.statusText}`);
+                const errorText = await response.text();
+                let errorMessage = `天枢大模型服务返回错误 (状态: ${response.status})。`;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage += ` 详情: ${errorJson.error || errorText}`;
+                } catch(e) {
+                    errorMessage += ` 详情: ${errorText}`;
+                }
+                if (response.status === 401) {
+                    errorMessage += ' (这通常表示 Authorization Token 无效或已过期，请检查设置。)';
+                }
+                throw new Error(errorMessage);
             }
 
-            const aiTemplateData = await response.json();
+            const aiResponseData = await response.json();
+            let jsonString = aiResponseData.choices[0].message.content;
+
+            const jsonMatch = jsonString.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonMatch && jsonMatch[1]) {
+                jsonString = jsonMatch[1];
+            }
+            const aiTemplateData = JSON.parse(jsonString);
 
             const thinkingBubble = document.getElementById(thinkingMessageId);
             const historyMessage = aiChatHistory.find(m => m.messageId === thinkingMessageId);
@@ -1233,7 +1405,10 @@
             console.error('天枢大模型填充失败:', error);
             const thinkingBubble = document.getElementById(thinkingMessageId);
             const historyMessage = aiChatHistory.find(m => m.messageId === thinkingMessageId);
-            const errorMessage = `天枢大模型填充失败: ${error.message}`;
+            let errorMessage = `天枢大模型填充失败: ${error.message}`;
+            if (error instanceof SyntaxError) {
+                errorMessage = "天枢大模型返回的JSON格式无效，无法解析。请重试。";
+            }
 
             if (thinkingBubble && historyMessage) {
                 thinkingBubble.className = 'ai-chat-bubble assistant error';
@@ -1300,6 +1475,7 @@
     window.onload = () => {
         initialBlocks.forEach(b => b.id = generateUniqueId());
         blocks = migrateToSubBlockModel(initialBlocks);
+        loadAiSettings(); // Load saved AI settings on start
         render();
         setupDragAndDrop();
         setupHelpImagePanning();
