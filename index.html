@@ -43,7 +43,7 @@
         .editor-card .content-editor { width: 100%; min-height: 80px; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem; outline: none; line-height: 1.6; }
         .content-editor[data-placeholder]:not(:focus):empty::before { content: attr(data-placeholder); color: #9ca3af; }
         .editor-card .centered-editor { text-align: center; } .editor-card .bold-editor { font-weight: 600; }
-        .preview-block, .divider-text-preview { transition: all 0.3s ease-in-out; position: relative; box-sizing: border-box; cursor: grab; }
+        .preview-block, .divider-text-preview, .image-only-preview { transition: all 0.3s ease-in-out; position: relative; box-sizing: border-box; cursor: grab; }
         .preview-highlight { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.7) !important; }
         .preview-block { background-color: #ffffff; border-radius: 1.5rem; padding: 20px; }
         .preview-block.large, .divider-text-preview { flex-basis: 100%; }
@@ -54,12 +54,22 @@
         .preview-block .preview-image-container { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
         .preview-block .preview-image-container .img-wrapper { flex: 1; min-width: 30%; border-radius: 1rem; overflow: hidden; aspect-ratio: 4 / 3; }
         .preview-image-container.layout-2x2 .img-wrapper { flex-basis: calc(50% - 0.5rem); min-width: auto; }
+        /* 新增：单张图片布局 */
+        .preview-image-container.single-image-layout { flex-wrap: nowrap; }
+        .preview-image-container.single-image-layout .img-wrapper { flex: 1; min-width: 100%; aspect-ratio: auto; }
+        .preview-image-container.single-image-layout img { object-fit: contain; }
+
         .preview-block .preview-image-container img { width: 100%; height: 100%; object-fit: cover; }
         .title-wrapper-preview { display: flex; align-items: center; gap: 0.75rem; }
         .title-bar-preview { width: 5px; background-color: #3b82f6; border-radius: 2.5px; align-self: stretch; }
         .divider-text-preview { font-size: 2.5rem; font-weight: 700; padding: 0 20px; color: #d1d5db; text-align: center; }
         .divider-text-preview.align-left { text-align: left; } .divider-text-preview.align-right { text-align: right; } .divider-text-preview.color-black { color: #1f2937; }
         .pure-text-preview-content { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 600; font-size: 1.5rem; }
+        /* 新增：纯图片卡片样式 */
+        .image-only-preview { flex-basis: 100%; border-radius: 1.5rem; overflow: hidden; box-shadow: none !important; padding: 0 !important; cursor: default; }
+        .image-only-preview .img-wrapper { width: 100%; height: 100%; }
+        .image-only-preview img { width: 100%; height: 100%; object-fit: cover; }
+
         .controls-header { padding: 1rem 1.5rem; border-bottom: 1px solid #e5e7eb; background-color: #f9fafb; font-size: 1.25rem; font-weight: 600; color: #111827; display: flex; align-items: center; gap: 1rem; }
         #report-title-input { font-size: 1.125rem; font-weight: 500; color: #111827; background-color: white; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; width: 100%; padding: 0.5rem 0.75rem; }
         .floating-controls { position: absolute; bottom: 1.25rem; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 1rem; z-index: 100; }
@@ -206,6 +216,7 @@
                     <button onclick="addBlock('divider')"><i class="fas fa-heading"></i>大标题</button>
                     <button onclick="addBlock('mediumtext')"><i class="fas fa-heading" style="font-size: 0.8em;"></i>中标题</button>
                     <button onclick="addBlock('puretext')"><i class="fas fa-text-height"></i>小标题</button>
+                    <button onclick="addBlock('imageonly')"><i class="fas fa-image"></i>纯图片卡片</button>
                     <button onclick="addBlock('large')"><i class="fas fa-image"></i>大卡片</button>
                     <button onclick="addBlock('small')"><i class="fas fa-grip-lines"></i>小卡片</button>
                 </div>
@@ -300,18 +311,22 @@
     const titleBarColors = { blue: '#3b82f6', purple: '#8b5cf6', orange: '#f97316' };
     const titleTextColors = { black: '#1f2937', yellow: '#f59e0b', blue: '#3b82f6', green: '#22c55e', purple: '#a855f7' };
     const highlightColors = { yellow: '#fde047', blue: '#bfdbfe', green: '#bbf7d0', purple: '#e9d5ff' };
-    const cardBackgroundColors = { blue: '#eff6ff', purple: '#f5f3ff', orange: '#fff7ed', default: '#ffffff' };
-    const fontSizes = { small: '1.5rem', medium: '2.0rem', large: '2.25rem' };
+    const cardBackgroundColors = { blue: '#eff6ff', purple: '#f5f3ff', orange: '#fff7ed', transparent: 'transparent', default: '#ffffff' };
+
+    // UPDATED: Added new font sizes for all text-based blocks
+    const fontSizes = { 'tiny': '1rem', 'x-small': '1.25rem', 'small': '1.5rem', 'medium': '2.0rem', 'large': '2.25rem' };
+    const dividerFontSizes = { 'tiny': '1rem', 'x-small': '1.25rem', 'small': '1.5rem', 'medium': '2.0rem', 'large': '2.5rem' };
+
     let lastDeletedBlock = null;
     let lastStateBeforeAIApply = null; // For AI apply undo
 
     const PLACEHOLDER_INITIAL = '在这里输入内容...';
     const PLACEHOLDER_NEW_SUB = '新增内容...';
 
-    const blockTypeNames = { large: '大卡片', small: '小卡片', divider: '大标题', puretext: '小标题', mediumtext: '中标题' };
+    const blockTypeNames = { large: '大卡片', small: '小卡片', divider: '大标题', puretext: '小标题', mediumtext: '中标题', imageonly: '纯图片卡片' };
     const compatibleTypesMatrix = {
         'title-blocks': ['large', 'small'],
-        'no-title-blocks': ['divider', 'mediumtext', 'puretext']
+        'no-title-blocks': ['divider', 'mediumtext', 'puretext', 'imageonly']
     };
 
     function migrateToSubBlockModel(oldBlocks) {
@@ -331,11 +346,15 @@
                 delete block.imageUrl1;
                 delete block.imageUrl2;
             }
-            if((block.type === 'large' || block.type === 'small' || block.type === 'puretext' || block.type === 'mediumtext') && !block.backgroundColor) {
+            if((block.type === 'large' || block.type === 'small' || block.type === 'puretext' || block.type === 'mediumtext' || block.type === 'divider') && !block.backgroundColor) {
                 block.backgroundColor = 'default';
             }
+            // UPDATED: Set default font size for divider and mediumtext
+            if(block.type === 'divider' && !block.fontSize) {
+                block.fontSize = 'large';
+            }
             if((block.type === 'puretext' || block.type === 'mediumtext') && !block.fontSize) {
-                block.fontSize = 'small';
+                block.fontSize = block.type === 'puretext' ? 'small' : 'medium';
             }
             return block;
         });
@@ -343,7 +362,7 @@
 
     let initialBlocks = [
         { type: 'large', backgroundColor: 'default', title: '设计与工艺', titleBarColor: 'blue', content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: 'https://placehold.co/400x250/8b5cf6/ffffff?text=车身', imageUrl2: 'https://placehold.co/400x250/f97316/ffffff?text=内饰' },
-        { type: 'divider', content: '核心技术', align: 'center', color: 'default' },
+        { type: 'divider', content: '核心技术', align: 'center', color: 'default', fontSize: 'large' },
         { type: 'large', backgroundColor: 'default', title: '性能参数', titleBarColor: null, content: `<p>${PLACEHOLDER_INITIAL}</p>`, imageUrl1: null, imageUrl2: null },
         { type: 'puretext', backgroundColor: 'default', content: '我们重新定义了驾驶的乐趣', textColor: '#1f2937', fontSize: 'small' },
         { type: 'small', backgroundColor: 'default', title: '智能座舱', titleBarColor: 'purple', content: `<p>${PLACEHOLDER_INITIAL}</p>` },
@@ -466,8 +485,11 @@
         document.body.onclick = (e) => { if (!e.target.closest('.custom-select-container')) { document.querySelectorAll('.custom-select-options').forEach(el => el.classList.remove('show')); } };
 
         let cardContent = '';
-        const backgroundSwatchesHtml = Object.entries(cardBackgroundColors).filter(([name]) => name !== 'default').map(([name, color]) => `<button class="color-swatch ${block.backgroundColor === name ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'backgroundColor', '${name}')" title="${name}"></button>`).join('');
-        const backgroundEditorHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">背景色</label><div class="flex items-center gap-2">${backgroundSwatchesHtml}<button class="w-6 h-6 rounded-full bg-white border border-gray-300 flex items-center justify-center ml-2" onclick="updateBlockStyle(${block.id}, 'backgroundColor', 'default')" title="默认白色"><i class="fas fa-times text-xs text-gray-600"></i></button></div></div>`;
+        const backgroundSwatchesHtml = Object.entries(cardBackgroundColors).map(([name, color]) => {
+            const isTransparent = name === 'transparent';
+            return `<button class="color-swatch ${block.backgroundColor === name ? 'active' : ''}" style="background-color: ${isTransparent ? 'white; border-style: dashed;' : color};" onclick="updateBlockStyle(${block.id}, 'backgroundColor', '${name}')" title="${isTransparent ? '透明' : name}"></button>`;
+        }).join('');
+        const backgroundEditorHtml = `<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">背景色</label><div class="flex items-center gap-2">${backgroundSwatchesHtml}</div></div>`;
 
         switch (block.type) {
             case 'large': case 'small':
@@ -484,16 +506,33 @@
                 setTimeout(() => setupSubBlockDragAndDrop(document.getElementById(subBlocksContainerId), block.id), 0);
                 break;
             case 'divider':
-                cardContent = `${typeSwitcherHtml}<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4 flex items-center gap-4"><div class="flex items-center gap-2"><button class="style-btn ${block.align === 'left' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'left')" title="左对齐"><i class="fas fa-align-left"></i></button><button class="style-btn ${block.align === 'center' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'center')" title="居中"><i class="fas fa-align-center"></i></button><button class="style-btn ${block.align === 'right' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'right')" title="右对齐"><i class="fas fa-align-right"></i></button></div><div class="flex items-center gap-2"><button class="style-btn ${block.color === 'default' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'default')" title="默认色"><span class="w-4 h-4 rounded-full bg-gray-300 block"></span></button><button class="style-btn ${block.color === 'black' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'black')" title="黑色"><span class="w-4 h-4 rounded-full bg-gray-800 block"></span></button></div></div>`;
+                // UPDATED: Added Font Size buttons for divider
+                const dividerFontSizeButtons = Object.keys(dividerFontSizes).map(size => `<button class="style-btn ${block.fontSize === size ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'fontSize', '${size}')">${{tiny:'特小', 'x-small':'小小', small:'小', medium:'中', large:'大'}[size]}</button>`).join('');
+                cardContent = `${typeSwitcherHtml}<div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">标题</label><div class="title-input-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4 flex items-center gap-4"><div class="flex items-center gap-2"><button class="style-btn ${block.align === 'left' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'left')" title="左对齐"><i class="fas fa-align-left"></i></button><button class="style-btn ${block.align === 'center' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'center')" title="居中"><i class="fas fa-align-center"></i></button><button class="style-btn ${block.align === 'right' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'align', 'right')" title="右对齐"><i class="fas fa-align-right"></i></button></div><div class="flex items-center gap-2"><button class="style-btn ${block.color === 'default' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'default')" title="默认色"><span class="w-4 h-4 rounded-full bg-gray-300 block"></span></button><button class="style-btn ${block.color === 'black' ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'color', 'black')" title="黑色"><span class="w-4 h-4 rounded-full bg-gray-800 block"></span></button></div></div><div class="mt-4"><label class="text-sm font-medium text-gray-500 mb-2 block">字号</label><div class="flex items-center gap-2">${dividerFontSizeButtons}</div></div>`;
                 break;
             case 'puretext': case 'mediumtext':
                 const colorSwatches = Object.entries(titleTextColors).map(([name, color]) => `<button class="color-swatch ${block.textColor === color ? 'active' : ''}" style="background-color: ${color};" onclick="updateBlockStyle(${block.id}, 'textColor', '${color}')" title="${name}"></button>`).join('');
-                const fontSizeButtons = Object.keys(fontSizes).map(size => `<button class="style-btn ${block.fontSize === size ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'fontSize', '${size}')">${{small:'小', medium:'中', large:'大'}[size]}</button>`).join('');
+                // UPDATED: Font size options now include x-small
+                const fontSizeButtons = Object.keys(fontSizes).map(size => `<button class="style-btn ${block.fontSize === size ? 'active' : ''}" onclick="updateBlockStyle(${block.id}, 'fontSize', '${size}')">${{tiny:'特小', 'x-small':'小小', small:'小', medium:'中', large:'大'}[size]}</button>`).join('');
                 cardContent = `${typeSwitcherHtml}${backgroundEditorHtml}<hr class="my-4"><div><div id="editor-${block.id}" class="content-editor centered-editor bold-editor" contenteditable="true" onpaste="handlePaste(event)" oninput="updateBlock(${block.id}, 'content', this.innerHTML)">${block.content}</div></div><div class="mt-4"><label class="text-sm font-medium text-gray-500 mb-2 block">文字样式</label><div class="flex items-center gap-x-6"><div class="flex items-center gap-2"><label class="text-sm text-gray-700">字号:</label>${fontSizeButtons}</div><div class="flex items-center gap-2"><label class="text-sm text-gray-700">颜色:</label>${colorSwatches}</div></div></div>`;
+                break;
+            case 'imageonly':
+                cardContent = `${typeSwitcherHtml}${backgroundEditorHtml}<hr class="my-4"><div class="mb-4"><label class="text-sm font-medium text-gray-500 mb-2 block">图片</label>${renderImageOnlyEditor(block)}</div>`;
                 break;
         }
         card.innerHTML = cardContent;
         container.appendChild(card);
+    }
+
+    function renderImageOnlyEditor(block) {
+        const fileInputId = `file-input-${block.id}`;
+        let content = '';
+        if (block.url) {
+            content = `<div class="editor-image-preview" onclick="document.getElementById('${fileInputId}').click()" title="点击替换图片"><img src="${block.url}"><button class="editor-image-delete-btn" onclick="event.stopPropagation(); updateBlock(${block.id}, 'url', null)"><i class="fas fa-times"></i></button></div>`;
+        } else {
+            content = `<button class="custom-file-button" onclick="document.getElementById('${fileInputId}').click()"><i class="fas fa-upload text-2xl mb-1"></i> <span>上传图片</span></button>`;
+        }
+        return content + `<input type="file" id="${fileInputId}" class="hidden" accept="image/*" onchange="updateImageOnly(${block.id}, event)">`;
     }
 
     function renderSubBlocksEditor(block) {
@@ -583,17 +622,34 @@
                 break;
             case 'divider':
                 div.className = `divider-text-preview align-${block.align || 'center'} color-${block.color || 'default'}`;
+                // UPDATED: Use the new font size property
+                div.style.fontSize = dividerFontSizes[block.fontSize] || dividerFontSizes.large;
                 div.innerHTML = block.content;
                 break;
             case 'mediumtext':
                 div.className = 'preview-block large';
                 div.style.backgroundColor = cardBackgroundColors[block.backgroundColor] || cardBackgroundColors.default;
-                div.innerHTML = `<div class="pure-text-preview-content" style="color: ${block.textColor || titleTextColors.black}; font-size: ${fontSizes[block.fontSize] || fontSizes.small};">${block.content}</div>`;
+                // UPDATED: Use the new font size property
+                div.innerHTML = `<div class="pure-text-preview-content" style="color: ${block.textColor || titleTextColors.black}; font-size: ${fontSizes[block.fontSize] || fontSizes.medium};">${block.content}</div>`;
                 break;
             case 'puretext':
                 div.className = 'preview-block small';
                 div.style.backgroundColor = cardBackgroundColors[block.backgroundColor] || cardBackgroundColors.default;
+                // UPDATED: Use the new font size property
                 div.innerHTML = `<div class="pure-text-preview-content" style="color: ${block.textColor || titleTextColors.black}; font-size: ${fontSizes[block.fontSize] || fontSizes.small};">${block.content}</div>`;
+                break;
+            case 'imageonly':
+                div.className = 'image-only-preview';
+                div.style.backgroundColor = cardBackgroundColors[block.backgroundColor] || cardBackgroundColors.default;
+                if (block.url) {
+                    div.innerHTML = `<div class="img-wrapper"><img src="${block.url}" draggable="false"></div>`;
+                } else {
+                    div.style.minHeight = '200px'; // Ensure height for visibility
+                    div.innerHTML = `<div class="h-full w-full flex flex-col items-center justify-center text-gray-400 text-sm border-2 border-dashed border-gray-300 rounded-lg p-4">
+                                        <i class="fas fa-image text-3xl mb-2"></i>
+                                        <span>点击编辑区域上传图片</span>
+                                     </div>`;
+                }
                 break;
         }
         return div;
@@ -617,7 +673,12 @@
                     imageGroupEnd++;
                 }
                 if (imageGroup.length > 0) {
-                    const layoutClass = imageGroup.length === 4 ? 'layout-2x2' : '';
+                    let layoutClass = '';
+                    if (imageGroup.length === 1) {
+                        layoutClass = 'single-image-layout';
+                    } else if (imageGroup.length === 4) {
+                        layoutClass = 'layout-2x2';
+                    }
                     let imageContainer = `<div class="preview-image-container ${layoutClass}">`;
                     imageContainer += imageGroup.map(imgSubBlock => `<div class="img-wrapper"><img src="${imgSubBlock.url}" draggable="false"></div>`).join('');
                     imageContainer += '</div>';
@@ -680,18 +741,23 @@
     }
 
     function addBlock(type) {
-        const newBlock = { id: generateUniqueId(), type: type, backgroundColor: 'default' };
-        if (type === 'divider') { newBlock.content = '大标题文本'; newBlock.align = 'center'; newBlock.color = 'default'; delete newBlock.backgroundColor; }
-        else if (type === 'puretext') { newBlock.content = '输入小标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'small'; }
-        else if (type === 'mediumtext'){ newBlock.content = '输入中标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'medium'; }
+        const newBlock = { id: generateUniqueId(), type: type };
+        if (type === 'divider') { newBlock.content = '大标题文本'; newBlock.align = 'center'; newBlock.color = 'default'; newBlock.fontSize = 'large'; }
+        else if (type === 'puretext') { newBlock.content = '输入小标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'small'; newBlock.backgroundColor = 'default'; }
+        else if (type === 'mediumtext'){ newBlock.content = '输入中标题'; newBlock.textColor = titleTextColors.black; newBlock.fontSize = 'medium'; newBlock.backgroundColor = 'default'; }
         else if (type === 'large' || type === 'small') {
             newBlock.titleBarColor = null;
+            newBlock.backgroundColor = 'default';
             newBlock.subBlocks = [
                 { id: generateUniqueId(), type: 'title', content: '新卡片标题' },
                 { id: generateUniqueId(), type: 'content', content: `<p>${PLACEHOLDER_INITIAL}</p>` }
             ];
             if (type === 'large') { newBlock.subBlocks.push({ id: generateUniqueId(), type: 'image', url: null }); }
+        } else if (type === 'imageonly') {
+            newBlock.url = null;
+            newBlock.backgroundColor = 'default';
         }
+
         if (selectedBlockId) { const selectedIndex = blocks.findIndex(b => b.id === selectedBlockId); if (selectedIndex > -1) { blocks.splice(selectedIndex + 1, 0, newBlock); } else { blocks.push(newBlock); } } else { blocks.push(newBlock); }
         selectBlockForEditing(newBlock.id);
         hideAddDropdown(true);
@@ -769,13 +835,15 @@
             if (isTitleBlock && !wasTitleBlock) {
                 block.content = block.subBlocks?.find(sb => sb.type === 'title')?.content || '新标题';
                 if(newType === 'puretext') block.fontSize = 'small';
-                if(newType === 'mediumtext') block.fontSize = 'medium';
-                if(newType === 'divider') { delete block.fontSize; delete block.textColor; }
+                else if(newType === 'mediumtext') block.fontSize = 'medium';
+                else if(newType === 'divider') { delete block.fontSize; delete block.textColor; } // UPDATED: divider has its own font size logic
                 delete block.subBlocks;
             } else if (!isTitleBlock && wasTitleBlock) {
                 block.subBlocks = [{id: generateUniqueId(), type: 'title', content: block.content || '新卡片标题'}];
                 block.backgroundColor = 'default';
                 delete block.content;
+                delete block.fontSize;
+                delete block.textColor;
             }
             render();
         }
@@ -784,6 +852,12 @@
         const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = (e) => { updateSubBlock(blockId, subBlockId, 'url', e.target.result); render(); };
+        reader.readAsDataURL(file);
+    }
+    function updateImageOnly(blockId, event) {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => { updateBlock(blockId, 'url', e.target.result); render(); };
         reader.readAsDataURL(file);
     }
     function deleteImage(blockId, subBlockId) { updateSubBlock(blockId, subBlockId, 'url', null); render(); }
@@ -888,8 +962,8 @@
                 { type: "divider", description: "大标题/分隔符：用于分隔报告的不同章节。", content: "【章节标题，例如：核心技术】", align: { value: "center", options: ["left", "center", "right"] }, color: { value: "default", options: ["default", "black"] } },
                 { type: "small", description: "小卡片：用于并列的次要模块，无图片。", title: "【小卡片标题，例如：智能座舱】", titleBarColor: { value: "purple", options: ["blue", "purple", "orange", null] }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] }, content: ["【关于此模块的简要介绍。】"] },
                 { type: "small", description: "小卡片：可以并列放置多个。", title: "【另一个小卡片，例如：安全配置】", titleBarColor: { value: "orange", options: ["blue", "purple", "orange", null] }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] }, content: ["【关于此模块的简要介绍。】"] },
-                { type: "mediumtext", description: "中标题：纯文本卡片，用于强调短语或副标题。", content: "【引人注目的中等大小标题】", fontSize: { value: "medium", options: ["small", "medium", "large"] }, textColor: { value: "#1f2937", description: "可使用HEX颜色代码" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] } },
-                { type: "puretext", description: "小标题：纯文本卡片，尺寸较小。", content: "【补充说明性质的小标题】", fontSize: { value: "small", options: ["small", "medium", "large"] }, textColor: { value: "#374151", description: "可使用HEX颜色代码" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] } }
+                { type: "mediumtext", description: "中标题：纯文本卡片，用于强调短语或副标题。", content: "【引人注目的中等大小标题】", fontSize: { value: "medium", options: ["tiny", "x-small", "small", "medium", "large"] }, textColor: { value: "#1f2937", description: "可使用HEX颜色代码" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] } },
+                { type: "puretext", description: "小标题：纯文本卡片，尺寸较小。", content: "【补充说明性质的小标题】", fontSize: { value: "small", options: ["tiny", "x-small", "small", "medium", "large"] }, textColor: { value: "#374151", description: "可使用HEX颜色代码" }, backgroundColor: { value: "default", options: ["default", "blue", "purple", "orange"] } }
             ]
         };
     }
@@ -914,10 +988,13 @@
                         if (block.type === 'large' && block.images && Array.isArray(block.images)) { block.images.forEach(imgUrl => { if(getValue(imgUrl) && !String(getValue(imgUrl)).startsWith("【")) { newBlock.subBlocks.push({ id: generateUniqueId(), type: 'image', url: getValue(imgUrl) }); } }); }
                         break;
                     case 'divider':
-                        newBlock.content = getValue(block.content) || ''; newBlock.align = getValue(block.align) || 'center'; newBlock.color = getValue(block.color) || 'default';
+                        newBlock.content = getValue(block.content) || ''; newBlock.align = getValue(block.align) || 'center'; newBlock.color = getValue(block.color) || 'default'; newBlock.fontSize = getValue(block.fontSize) || 'large';
                         break;
                     case 'mediumtext': case 'puretext':
                         newBlock.content = getValue(block.content) || ''; newBlock.backgroundColor = getValue(block.backgroundColor) || 'default'; newBlock.textColor = getValue(block.textColor) || '#1f2937'; newBlock.fontSize = getValue(block.fontSize) || (block.type === 'mediumtext' ? 'medium' : 'small');
+                        break;
+                    case 'imageonly':
+                        if (block.url && !String(getValue(block.url)).startsWith("【")) { newBlock.url = getValue(block.url); } else { newBlock.url = null; }
                         break;
                     default: continue;
                 }
@@ -1244,11 +1321,14 @@
             reportTitle: "【请填写报告主标题】",
             coverImageUrl: "【请粘贴封面图片的URL，或留空】",
             blocks: [
-                { type: "divider", content: "【全文总标题】", "align": "center", "color": "black" },
-                { type: "large", title: "【第一个核心板块标题】", "titleBarColor": "blue", content: ["【内容段落1...】"], },
-                { type: "divider", content: "【第二个章节标题】", "align": "center", "color": "default" },
-                { type: "small", title: "【并列内容1】", "titleBarColor": "purple", content: ["【简介1】"] },
-                { type: "small", title: "【并列内容2】", "titleBarColor": "purple", content: ["【简介2】"] }
+                { type: "divider", content: "【全文总标题】", "align": "center", "color": "black", "fontSize": "large" },
+                { type: "large", description: "大卡片", title: "【第一个核心板块标题】", "titleBarColor": "blue", content: ["【内容段落1...】"], },
+                { type: "divider", description: "大标题", content: "【第二个章节标题】", "align": "center", "color": "default", "fontSize": "medium" },
+                { type: "small", description: "小卡片", title: "【并列内容1】", "titleBarColor": "purple", content: ["【简介1】"] },
+                { type: "small", description: "小卡片", title: "【并列内容2】", "titleBarColor": "purple", content: ["【简介2】"] },
+                { type: "imageonly", description: "纯图片卡片", url: "【图片URL】" },
+                { type: "mediumtext", description: "中标题", content: "【引人注目的中等大小标题】", fontSize: "medium", textColor: "#1f2937", backgroundColor: "default" },
+                { type: "puretext", description: "小标题", content: "【补充说明性质的小标题】", fontSize: "small", textColor: "#374151", backgroundColor: "default" }
             ]
         };
     }
@@ -1320,24 +1400,32 @@
 1.  **大标题 (\`divider\`)**:
     * **作为全文总标题**: 当它是第一个模块时，用于整个长图的标题，样式应设为 \`"align": "center"\` 和 \`"color": "black"\`。
     * **作为章节标题**: 在长图中间用于分隔不同板块时，样式使用默认的 \`"align": "center"\` 和 \`"color": "default"\` (灰色)。
+    * **字体大小**: 请根据其在报告中的重要性选择 \`"fontSize"\`，可选值为: \`"large" (最大)\`, \`"medium"\`, \`"small"\`, \`"x-small"\`, \`"tiny" (最小)\`。
 
 2.  **中标题 (\`mediumtext\`)**:
     * 用于展示较长的、引人注目的宣传语或小节标题，但字数不宜过多，核心作用是醒目提示。
+    * **字体大小**: 请选择合适的 \`"fontSize"\`，可选值为: \`"large" (最大)\`, \`"medium"\`, \`"small"\`, \`"x-small"\`, \`"tiny" (最小)\`。
 
 3.  **小标题 (\`puretext\`)**:
     * 用于展示字数极少的亮点功能或关键参数（如“800V高压平台”）。内容可以与卡片内的正文重复，以达到强调效果。
+    * **字体大小**: 请选择合适的 \`"fontSize"\`，可选值为: \`"large" (最大)\`, \`"medium"\`, \`"small"\`, \`"x-small"\`, \`"tiny" (最小)\`。
 
 4.  **大卡片 (\`large\`)**:
     * 是内容的核心载体。如果某个章节的正文内容过长，应主动将其拆分为【多个内容连贯的大卡片】，并把它们都放在同一个大标题 (\`divider\`) 之下。
+    * **图片**: 如果有图片URL，请将它们填充到 \`"images"\` 数组中。如果只有一个图片，它将自适应布局以完全显示。如果有多个图片，它们会以网格形式展示。
 
-5.  **小卡片 (\`small\`) 与 小标题 (\`puretext\`) 的布局规则**:
+5.  **纯图片卡片 (\`imageonly\`)**:
+    * 这是一种专门用于全宽展示图片的卡片。
+    * **图片**: 如果有图片URL，请将其填充到 \`"url"\` 字段中。
+
+6.  **小卡片 (\`small\`) 与 小标题 (\`puretext\`) 的布局规则**:
     * 这两种类型用于展示并列的、简短的信息点。
     * 它们应该**成对或以偶数数量出现** (例如, 2个或4个), 并且**内容相关度高的应该相邻放置**。例如，可以并排放置两个介绍亮点功能的小卡片，或者并排放置两个展示核心参数的小标题。
 
 【高级样式指南】
 请克制地、有策略地使用以下样式，以保持报告的专业和整洁感：
 
-* **卡片样式**: \`"titleBarColor"\` (可选: "blue", "purple", "orange") 和 \`"backgroundColor"\` (可选: "blue", "purple", "orange", "default")。
+* **卡片样式**: \`"titleBarColor"\` (可选: "blue", "purple", "orange") 和 \`"backgroundColor"\` (可选: "blue", "purple", "orange", "default", "transparent")。
 * **文本样式**: 在 "content" 字段内使用 \`<strong>加粗</strong>\` 和 \`<mark style="background-color: #fde047;">高亮</mark>\` (可选颜色: #fde047黄, #bfdbfe蓝, #bbf7d0绿, #e9d5ff紫)。
 * **标题样式**: \`"align"\`, \`"color"\`, \`"fontSize"\`, \`"textColor"\` 等，根据不同标题类型使用。
 
@@ -1348,7 +1436,7 @@ ${JSON.stringify(generateAITemplateForPrompt(), null, 2)}`;
             const dataForAI = {
                 "model": aiModelEndpoint, // Use the configured endpoint
                 "temperature": 0.7,
-                "max_tokens": 8192,
+                "max_tokens": 3000,
                 "messages": [
                     { "role": "system", "content": systemPrompt },
                     { "role": "user", "content": fullPrompt }
